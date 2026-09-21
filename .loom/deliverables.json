@@ -122,7 +122,7 @@
       "slug": "dev-env",
       "title": "开发环境：pyproject.toml、.env.example、依赖安装可跑通",
       "kind": "operational",
-      "notes": "",
+      "notes": "TASK-001 完成(2026-09-21)：pyproject requires-python>=3.12，deps=pipecat-ai/sounddevice/numpy/httpx/websockets/msgpack/dashscope；.venv pip install -e \".[dev]\" 成功，`python -c \"import pipecat, sounddevice\"` exit 0（Linux 宿主 PortAudio 经 .deb 解包进 .venv/lib + .pth shim，Windows wheel 自带）；.env.example 含 FISH/DASHSCOPE/DEEPSEEK 三 key 占位；`docker build -t paimon-voice .` + `docker run --rm paimon-voice python -c \"import pipecat\"` 通过。",
       "covered_by": [
         "TASK-001"
       ],

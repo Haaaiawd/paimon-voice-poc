@@ -9,17 +9,17 @@
         {
           "criterion": "pyproject.toml 声明 Python 3.12 与全部依赖（pipecat、sounddevice 等），pip/uv 安装成功",
           "verify_by": "python -c \"import pipecat, sounddevice\" 退出码 0",
-          "evidence": ""
+          "evidence": "requires-python=\">=3.12\"；deps: pipecat-ai>=1.10,<2 / sounddevice>=0.5 / numpy / httpx / websockets / msgpack / dashscope。`.venv/bin/pip install -e \".[dev]\"` 全部解析安装成功；`.venv/bin/python -c \"import pipecat, sounddevice\"` → exit 0"
         },
         {
           "criterion": ".env.example 含 DASHSCOPE_API_KEY、FISH_API_KEY、DEEPSEEK_API_KEY 占位",
           "verify_by": "查看 .env.example 文件内容",
-          "evidence": ""
+          "evidence": ".env.example 三行占位均在（L3 FISH_API_KEY=、L8 DASHSCOPE_API_KEY=、L11 DEEPSEEK_API_KEY=），另含 Fish 免费层与代理 DIRECT 注释"
         },
         {
           "criterion": "Dockerfile 可构建且镜像内依赖 import 通过",
           "verify_by": "docker build -t paimon-voice . && docker run --rm paimon-voice python -c \"import pipecat\"",
-          "evidence": ""
+          "evidence": "`docker build -t paimon-voice .` 完成（python:3.12-slim + apt libportaudio2 + pip install .）；`docker run --rm paimon-voice python -c \"import pipecat\"` exit 0；`docker run --rm paimon-voice` 输出 'paimon-voice deps ok'"
         }
       ],
       "done_when": [],
@@ -48,15 +48,42 @@
       "covers": [
         "DLV-011"
       ],
-      "status": "active",
+      "status": "done",
       "progress": {
-        "completed": [],
-        "current": "",
+        "completed": [
+          "venv 创建并 pip install -e \".[dev]\" 成功",
+          "宿主 import 验证通过（PortAudio 解包进 .venv/lib）",
+          "docker build + run 验证通过"
+        ],
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pip install -e \".[dev]\" 成功（Python 3.12.3 venv）：pipecat-ai 1.11.0、sounddevice 0.5.6、dashscope 1.27.6、numpy 2.5.3、httpx 0.28.1、websockets 17.1、msgpack 1.2.2 全部装上",
+        "python -c \"import pipecat, sounddevice\" 退出码 0（.venv；Linux 宿主将 libportaudio2 .deb 解包至 .venv/lib 并加 .pth shim；Windows wheel 自带 PortAudio 无需此步）",
+        "docker build -t paimon-voice . 成功（image sha256:9ee145a935c1）；docker run --rm paimon-voice python -c \"import pipecat, sounddevice\" 退出码 0；默认 CMD 打印 'paimon-voice deps ok'",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "pyproject.toml 声明 Python 3.12 与全部依赖（pipecat、sounddevice 等），pip/uv 安装成功",
+              "evidence": "requires-python=\">=3.12\"；deps: pipecat-ai>=1.10,<2 / sounddevice>=0.5 / numpy / httpx / websockets / msgpack / dashscope。`.venv/bin/pip install -e \".[dev]\"` 全部解析安装成功；`.venv/bin/python -c \"import pipecat, sounddevice\"` → exit 0"
+            },
+            {
+              "criterion": ".env.example 含 DASHSCOPE_API_KEY、FISH_API_KEY、DEEPSEEK_API_KEY 占位",
+              "evidence": ".env.example 三行占位均在（L3 FISH_API_KEY=、L8 DASHSCOPE_API_KEY=、L11 DEEPSEEK_API_KEY=），另含 Fish 免费层与代理 DIRECT 注释"
+            },
+            {
+              "criterion": "Dockerfile 可构建且镜像内依赖 import 通过",
+              "evidence": "`docker build -t paimon-voice .` 完成（python:3.12-slim + apt libportaudio2 + pip install .）；`docker run --rm paimon-voice python -c \"import pipecat\"` exit 0；`docker run --rm paimon-voice` 输出 'paimon-voice deps ok'"
+            }
+          ],
+          "at": "2026-09-21T17:10:04.529Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.212Z",
-      "updated_at": "2026-09-21T16:23:28.002Z"
+      "updated_at": "2026-09-21T17:10:04.530Z",
+      "completed_at": "2026-09-21T17:10:04.530Z"
     },
     {
       "id": "TASK-002",
