@@ -429,8 +429,8 @@
       ],
       "done_when": [],
       "boundaries": [
-        "blocked 直到 Fish Audio key 到位",
-        "只实现 adapter"
+        "只实现 adapter",
+        "使用免费层模型串 s2.1-pro-free（付费模型会 402）；模型串写进 .env.example 注释"
       ],
       "depends_on": [
         "TASK-002",
@@ -460,6 +460,11 @@
           "node": "chinese-tts-eval#C3",
           "at": "实现 cancel 时",
           "must_produce": "cancel 后停推/清 buffer/连续重开的实测断言"
+        },
+        {
+          "node": "low-latency-pipeline#C1",
+          "at": "验收 TTFA 时",
+          "must_produce": "WS 常驻连接下的热 TTFA 实测值；若持续 >300ms 则记录并建议触发百炼 CosyVoice 回退"
         }
       ],
       "capability_exemption": "",
@@ -476,7 +481,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:54:26.592Z"
+      "updated_at": "2026-09-21T14:25:04.013Z"
     },
     {
       "id": "TASK-009",
