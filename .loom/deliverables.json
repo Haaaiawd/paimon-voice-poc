@@ -1,4 +1,132 @@
 {
   "schema_version": 2,
-  "deliverables": []
+  "deliverables": [
+    {
+      "id": "DLV-001",
+      "slug": "voice-runtime-pipeline",
+      "title": "实时语音流水线：麦克风→VAD→Turn→ASR→播放（Pipecat 组装）",
+      "kind": "module",
+      "notes": "",
+      "covered_by": [
+        "TASK-004",
+        "TASK-007",
+        "TASK-008",
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:50.536Z"
+    },
+    {
+      "id": "DLV-002",
+      "slug": "conversation-core",
+      "title": "Conversation Core：TurnManager/InterruptionManager/InitiativePolicy/ContextManager/状态机",
+      "kind": "module",
+      "notes": "",
+      "covered_by": [
+        "TASK-005",
+        "TASK-006"
+      ],
+      "created_at": "2026-09-21T13:01:50.702Z"
+    },
+    {
+      "id": "DLV-003",
+      "slug": "provider-adapters",
+      "title": "ASR/LLM/TTS Provider 抽象与 adapter 层",
+      "kind": "interface",
+      "notes": "",
+      "covered_by": [
+        "TASK-002",
+        "TASK-007",
+        "TASK-008"
+      ],
+      "created_at": "2026-09-21T13:01:50.890Z"
+    },
+    {
+      "id": "DLV-004",
+      "slug": "paimon-persona",
+      "title": "派蒙人格：Behavior Policy、情绪标签、结构化 LLM 输出",
+      "kind": "feature",
+      "notes": "",
+      "covered_by": [
+        "TASK-009"
+      ],
+      "created_at": "2026-09-21T13:01:51.086Z"
+    },
+    {
+      "id": "DLV-005",
+      "slug": "barge-in",
+      "title": "端到端打断：停播/清 buffer/取消 LLM/heard history 记录",
+      "kind": "behavior",
+      "notes": "",
+      "covered_by": [
+        "TASK-006"
+      ],
+      "created_at": "2026-09-21T13:01:51.292Z"
+    },
+    {
+      "id": "DLV-006",
+      "slug": "initiative-behavior",
+      "title": "主动插话规则与 SILENCED 状态",
+      "kind": "behavior",
+      "notes": "",
+      "covered_by": [
+        "TASK-011"
+      ],
+      "created_at": "2026-09-21T13:01:51.507Z"
+    },
+    {
+      "id": "DLV-007",
+      "slug": "latency-metrics",
+      "title": "延迟指标：SEFA、barge-in stop latency、逐轮 latency log",
+      "kind": "module",
+      "notes": "",
+      "covered_by": [
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:51.712Z"
+    },
+    {
+      "id": "DLV-008",
+      "slug": "terminal-ui",
+      "title": "Terminal UI：状态显示、对话流、延迟数字",
+      "kind": "interface",
+      "notes": "",
+      "covered_by": [
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:51.890Z"
+    },
+    {
+      "id": "DLV-009",
+      "slug": "provider-benchmarks",
+      "title": "赛马脚本：LLM TTFT benchmark + TTS 对比测试",
+      "kind": "verification",
+      "notes": "",
+      "covered_by": [
+        "TASK-003"
+      ],
+      "created_at": "2026-09-21T13:01:52.064Z"
+    },
+    {
+      "id": "DLV-010",
+      "slug": "mvp-eval",
+      "title": "MVP 验收：测试用例 A–G + 10 分钟连续运行",
+      "kind": "verification",
+      "notes": "",
+      "covered_by": [
+        "TASK-012"
+      ],
+      "created_at": "2026-09-21T13:01:52.243Z"
+    },
+    {
+      "id": "DLV-011",
+      "slug": "dev-env",
+      "title": "开发环境：pyproject.toml、.env.example、依赖安装可跑通",
+      "kind": "operational",
+      "notes": "",
+      "covered_by": [
+        "TASK-001"
+      ],
+      "created_at": "2026-09-21T13:01:52.465Z"
+    }
+  ]
 }

@@ -1,4 +1,708 @@
 {
   "schema_version": 2,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "开发环境骨架：pyproject + .env.example + Dockerfile",
+      "outcome": "Windows 原生 Python 3.12 下依赖可安装，Dockerfile 可构建，.env.example 列出全部所需 key。",
+      "acceptance": [
+        {
+          "criterion": "pyproject.toml 声明 Python 3.12 与全部依赖（pipecat、sounddevice 等），pip/uv 安装成功",
+          "verify_by": "python -c \"import pipecat, sounddevice\" 退出码 0",
+          "evidence": ""
+        },
+        {
+          "criterion": ".env.example 含 DASHSCOPE_API_KEY、FISH_API_KEY、DEEPSEEK_API_KEY 占位",
+          "verify_by": "查看 .env.example 文件内容",
+          "evidence": ""
+        },
+        {
+          "criterion": "Dockerfile 可构建且镜像内依赖 import 通过",
+          "verify_by": "docker build -t paimon-voice . && docker run --rm paimon-voice python -c \"import pipecat\"",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "不写业务代码",
+        "不改文档 00–07"
+      ],
+      "depends_on": [],
+      "reads": [
+        ".loom/PROJECT.md",
+        ".loom/STRUCTURE.md",
+        "04_TECH_STACK_AND_OPEN_SOURCE.md"
+      ],
+      "touches": [
+        "pyproject.toml",
+        ".env.example",
+        "Dockerfile",
+        "README.md"
+      ],
+      "implements": ".loom/design/tech-stack.md",
+      "design_exemption": "",
+      "capability_hooks": [],
+      "capability_exemption": "环境脚手架与依赖打包，无 capability 决策节点适用",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-011"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.212Z",
+      "updated_at": "2026-09-21T13:36:06.778Z"
+    },
+    {
+      "id": "TASK-002",
+      "title": "Provider 抽象层 + OpenAI-compatible LLM adapter",
+      "outcome": "ASRProvider/LLMProvider/TTSProvider 抽象接口落地；LLM 实现支持 streaming 与结构化 JSON 输出。",
+      "acceptance": [
+        {
+          "criterion": "三个 Provider 抽象类存在，业务层不直接 import 供应商 SDK",
+          "verify_by": "grep 确认 src/ 内除 providers/ 外无供应商 SDK import；pytest tests/test_providers.py 通过",
+          "evidence": ""
+        },
+        {
+          "criterion": "LLM adapter 对 mock OpenAI-compatible endpoint 流式返回 token，并能解析结构化输出",
+          "verify_by": "pytest tests/test_llm_adapter.py 通过",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "只写接口与 LLM adapter，不接真实 ASR/TTS"
+      ],
+      "depends_on": [
+        "TASK-001"
+      ],
+      "reads": [
+        "02_SYSTEM_ARCHITECTURE.md",
+        "04_TECH_STACK_AND_OPEN_SOURCE.md",
+        ".loom/STRUCTURE.md"
+      ],
+      "touches": [
+        "src/providers/"
+      ],
+      "implements": ".loom/design/system-architecture.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "streaming-asr-zh#C3",
+          "at": "定义 ASRProvider 事件面时",
+          "must_produce": "接口只暴露 partial/final 事件"
+        },
+        {
+          "node": "chinese-tts-eval#C3",
+          "at": "定义 TTSProvider.cancel 契约时",
+          "must_produce": "cancel 语义含停推+buffer 清理契约"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-003"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:06.959Z"
+    },
+    {
+      "id": "TASK-003",
+      "title": "LLM 赛马 benchmark：DeepSeek vs 通义千问",
+      "outcome": "同一组 prompt 对两家 OpenAI-compatible endpoint 实测 TTFT，输出对比表。",
+      "acceptance": [
+        {
+          "criterion": "benchmark 脚本对 DeepSeek 与 DashScope 兼容模式各跑 ≥20 次，输出 TTFT 均值/p50/p95 与结构化输出成功率",
+          "verify_by": "python scripts/bench_llm.py 输出含两家数据的表格",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "只做测量脚本，不做选型结论",
+        "DeepSeek key 未到位时可先只跑通义，脚本逻辑不变"
+      ],
+      "depends_on": [
+        "TASK-002"
+      ],
+      "reads": [
+        "04_TECH_STACK_AND_OPEN_SOURCE.md",
+        "06_MVP_AND_EVALUATION.md"
+      ],
+      "touches": [
+        "scripts/bench_llm.py"
+      ],
+      "implements": ".loom/design/mvp-evaluation.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "low-latency-pipeline#C5",
+          "at": "设计 benchmark 输出时",
+          "must_produce": "分阶段 p50/p95 而非单点均值"
+        },
+        {
+          "node": "chinese-tts-eval#C4",
+          "at": "选测句与记录口径时",
+          "must_produce": "TTFT/TTFA/结构化成功率实测表"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-009"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:07.143Z"
+    },
+    {
+      "id": "TASK-004",
+      "title": "音频与轮次层：麦克风采集 + 播放 + Silero VAD + Smart Turn adapter",
+      "outcome": "本地无云依赖的音频链路：采集 PCM、VAD 判定、Smart Turn 判定轮次结束、可立即停播的播放器。",
+      "acceptance": [
+        {
+          "criterion": "对着麦克风说话，终端实时显示 VAD speech/non-speech 与 Smart Turn complete/incomplete 判定",
+          "verify_by": "python -m src.runtime.audio_demo 运行，人工对着麦克风验证句中停顿不判 complete",
+          "evidence": ""
+        },
+        {
+          "criterion": "播放器支持流式写入 + stop() 立即清空 buffer 并报告实际播放位置",
+          "verify_by": "pytest tests/test_playback.py 验证 stop 延迟与播放位置回报",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "不接 ASR/LLM/TTS",
+        "只做 Windows 本地音频"
+      ],
+      "depends_on": [
+        "TASK-001"
+      ],
+      "reads": [
+        "02_SYSTEM_ARCHITECTURE.md",
+        "04_TECH_STACK_AND_OPEN_SOURCE.md"
+      ],
+      "touches": [
+        "src/turn/",
+        "src/runtime/"
+      ],
+      "implements": "02_SYSTEM_ARCHITECTURE.md#每个模块负责什么",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "turn-taking#C2",
+          "at": "配置 Silero VAD 与 Smart Turn 参数时",
+          "must_produce": "VAD stop_secs=0.2 + SmartTurnParams(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) 的显式配置"
+        },
+        {
+          "node": "turn-taking#C1",
+          "at": "选择 stop strategy 时",
+          "must_produce": "TurnAnalyzerUserTurnStopStrategy + LocalSmartTurnAnalyzerV3 接线"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-001"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:35:28.180Z"
+    },
+    {
+      "id": "TASK-005",
+      "title": "Conversation Core：状态机 + TurnManager + 事件总线",
+      "outcome": "IDLE/LISTENING/POSSIBLE_END/THINKING/SPEAKING/INTERRUPTED/SILENCED 状态机与事件化总线可单测。",
+      "acceptance": [
+        {
+          "criterion": "事件总线定义 doc 03 §4 全部事件类型；状态机迁移覆盖 doc 02 §3 典型路径",
+          "verify_by": "pytest tests/test_state_machine.py 覆盖全部状态迁移",
+          "evidence": ""
+        },
+        {
+          "criterion": "TurnManager 消费 VAD+SmartTurn+ASR partial 事件，输出 USER_TURN_STARTED/CONTINUES/COMPLETE/AGENT_CAN_RESPOND",
+          "verify_by": "pytest tests/test_turn_manager.py 用录制事件序列驱动断言",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "纯逻辑层，无音频/网络依赖",
+        "LLM 未接入，AGENT_CAN_RESPOND 只发事件"
+      ],
+      "depends_on": [
+        "TASK-001"
+      ],
+      "reads": [
+        "03_CONVERSATION_CORE.md",
+        "02_SYSTEM_ARCHITECTURE.md"
+      ],
+      "touches": [
+        "src/conversation/"
+      ],
+      "implements": ".loom/design/conversation-core.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "turn-taking#C1",
+          "at": "TurnManager 消费判定信号时",
+          "must_produce": "轮次权归 Smart Turn，不裸用 VAD 静音超时"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-002"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:07.315Z"
+    },
+    {
+      "id": "TASK-006",
+      "title": "InterruptionManager + heard history（端到端打断）",
+      "outcome": "SPEAKING 中用户开口即停播、清 buffer、取消 LLM，heard history 与 logical history 分离记录。",
+      "acceptance": [
+        {
+          "criterion": "模拟打断事件后：播放停止、TTS buffer 清空、LLM 取消、状态进 INTERRUPTED→LISTENING",
+          "verify_by": "pytest tests/test_interruption.py 断言六步全部发生",
+          "evidence": ""
+        },
+        {
+          "criterion": "下一轮 LLM 输入含 assistant_heard / assistant_generated_but_not_heard / assistant_was_interrupted 三段",
+          "verify_by": "pytest 断言构造的 context payload 结构与 doc 03 §3 一致",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "用假音频/假 LLM 驱动，不接真实 provider"
+      ],
+      "depends_on": [
+        "TASK-005"
+      ],
+      "reads": [
+        "03_CONVERSATION_CORE.md"
+      ],
+      "touches": [
+        "src/conversation/interruption.py",
+        "src/conversation/context.py"
+      ],
+      "implements": ".loom/design/conversation-core.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "turn-taking#C4",
+          "at": "实现打断触发时",
+          "must_produce": "VAD speech_started 即停播+取消在途的六步执行，最短打断时长留 hook"
+        },
+        {
+          "node": "turn-taking#C5",
+          "at": "实现打断后历史时",
+          "must_produce": "heard/generated_but_not_heard 分离的 context payload"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-002",
+        "DLV-005"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:07.499Z"
+    },
+    {
+      "id": "TASK-007",
+      "title": "DashScope 流式 ASR adapter",
+      "outcome": "阿里云百炼流式识别接入 ASRProvider 接口，输出 partial/final 事件。",
+      "acceptance": [
+        {
+          "criterion": "对麦克风说中文，ASR partial/final 事件实时流出且延迟可见",
+          "verify_by": "python -m src.providers.asr.dashscope_demo 人工验证",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "blocked 直到 DashScope key 到位",
+        "只实现 adapter，不接 pipeline"
+      ],
+      "depends_on": [
+        "TASK-002"
+      ],
+      "reads": [
+        "04_TECH_STACK_AND_OPEN_SOURCE.md",
+        ".loom/STRUCTURE.md"
+      ],
+      "touches": [
+        "src/providers/asr/"
+      ],
+      "implements": ".loom/design/tech-stack.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "streaming-asr-zh#C1",
+          "at": "配置 Paraformer 参数时",
+          "must_produce": "semantic_punctuation_enabled=false"
+        },
+        {
+          "node": "streaming-asr-zh#C2",
+          "at": "配置断句阈值时",
+          "must_produce": "max_sentence_silence≈500ms 初始值"
+        },
+        {
+          "node": "streaming-asr-zh#C3",
+          "at": "接线 ASR 事件时",
+          "must_produce": "ASR 只产出 ASR_PARTIAL/ASR_FINAL 事件，不直驱状态机"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-003",
+        "DLV-001"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:07.678Z"
+    },
+    {
+      "id": "TASK-008",
+      "title": "Fish Audio TTS adapter",
+      "outcome": "Fish Audio streaming TTS 接入 TTSProvider 接口，支持流式播放与立即取消。",
+      "acceptance": [
+        {
+          "criterion": "文本送进去能听到声音，输出 TTFA 数字",
+          "verify_by": "python -m src.providers.tts.fish_demo 人工听 + 终端打印 TTFA",
+          "evidence": ""
+        },
+        {
+          "criterion": "播放中 cancel() 后音频立即停止且无残留 buffer 播放",
+          "verify_by": "pytest tests/test_fish_tts.py 或 demo 中打断验证",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "blocked 直到 Fish Audio key 到位",
+        "只实现 adapter"
+      ],
+      "depends_on": [
+        "TASK-002"
+      ],
+      "reads": [
+        "04_TECH_STACK_AND_OPEN_SOURCE.md",
+        ".loom/STRUCTURE.md"
+      ],
+      "touches": [
+        "src/providers/tts/"
+      ],
+      "implements": ".loom/design/tech-stack.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "chinese-tts-eval#C1",
+          "at": "选接入协议时",
+          "must_produce": "WebSocket 主路接入"
+        },
+        {
+          "node": "chinese-tts-eval#C2",
+          "at": "实现文本推送时",
+          "must_produce": "语义边界发 flush + latency=balanced"
+        },
+        {
+          "node": "chinese-tts-eval#C3",
+          "at": "实现 cancel 时",
+          "must_produce": "cancel 后停推/清 buffer/连续重开的实测断言"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-003",
+        "DLV-001"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:07.858Z"
+    },
+    {
+      "id": "TASK-009",
+      "title": "派蒙人格：Behavior Policy + 结构化输出接入",
+      "outcome": "persona 定义、情绪标签集、LLM 结构化输出（speech/emotion/energy/should_continue）贯通。",
+      "acceptance": [
+        {
+          "criterion": "给定 context，LLM 稳定输出符合 schema 的 JSON（emotion ∈ doc 05 §8 标签集）",
+          "verify_by": "pytest tests/test_persona.py 断言 schema 与标签合法性",
+          "evidence": ""
+        },
+        {
+          "criterion": "system prompt 只含身份/语气/长度/行为限制，不写角色小说",
+          "verify_by": "review src/character/ prompt 模板，对照 doc 05 §10",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "persona 参数可调，不做自动调优"
+      ],
+      "depends_on": [
+        "TASK-002",
+        "TASK-005"
+      ],
+      "reads": [
+        "05_PAIMON_PERSONA.md",
+        "03_CONVERSATION_CORE.md"
+      ],
+      "touches": [
+        "src/character/"
+      ],
+      "implements": ".loom/design/paimon-persona.md",
+      "design_exemption": "",
+      "capability_hooks": [],
+      "capability_exemption": "人格与行为策略属设计层，capability 边界明确不含",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-004"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:08.046Z"
+    },
+    {
+      "id": "TASK-010",
+      "title": "端到端 pipeline 组装 + Terminal UI + latency metrics",
+      "outcome": "麦克风到扬声器全链路跑通；终端显示状态机、对话流与逐轮延迟数字（SEFA 等）。",
+      "acceptance": [
+        {
+          "criterion": "对着麦克风说一句完整的话，派蒙回复出声，终端按 doc 06 §2 格式显示状态与延迟",
+          "verify_by": "python -m src.runtime.main 人工对话验证",
+          "evidence": ""
+        },
+        {
+          "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
+          "verify_by": "data/ 下 latency log 含全部字段",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "SEFA 未达 500–800ms 不算失败，但数字必须可见"
+      ],
+      "depends_on": [
+        "TASK-004",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-009"
+      ],
+      "reads": [
+        "06_MVP_AND_EVALUATION.md",
+        "02_SYSTEM_ARCHITECTURE.md",
+        ".loom/PROJECT.md"
+      ],
+      "touches": [
+        "src/runtime/main.py",
+        "src/metrics/",
+        "src/runtime/terminal.py"
+      ],
+      "implements": ".loom/design/mvp-evaluation.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "low-latency-pipeline#C1",
+          "at": "组装管线时",
+          "must_produce": "分阶段预算埋点（九时间戳）"
+        },
+        {
+          "node": "low-latency-pipeline#C5",
+          "at": "实现 metrics 时",
+          "must_produce": "SEFA + barge-in latency 逐轮记录到 data/"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-001",
+        "DLV-007",
+        "DLV-008"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:08.260Z"
+    },
+    {
+      "id": "TASK-011",
+      "title": "InitiativePolicy + SILENCED",
+      "outcome": "doc 03 §2.3 评分规则落地；用户说话中/SILENCED 下硬规则 NEVER_SPEAK；'闭嘴两分钟'可生效。",
+      "acceptance": [
+        {
+          "criterion": "评分公式与硬规则按 doc 03 §2.3 实现，LLM 可返回 NOOP",
+          "verify_by": "pytest tests/test_initiative.py 覆盖 silence/说话中/超时场景",
+          "evidence": ""
+        },
+        {
+          "criterion": "用户说'闭嘴'后进入 SILENCED，窗口内不主动发言，喊派蒙可唤醒",
+          "verify_by": "端到端或集成测试验证",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "第一版不真正打断正在讲话的用户（D-008）"
+      ],
+      "depends_on": [
+        "TASK-005",
+        "TASK-009"
+      ],
+      "reads": [
+        "03_CONVERSATION_CORE.md",
+        "05_PAIMON_PERSONA.md",
+        "07_DECISIONS_AND_OPEN_QUESTIONS.md"
+      ],
+      "touches": [
+        "src/conversation/initiative.py"
+      ],
+      "implements": ".loom/design/conversation-core.md",
+      "design_exemption": "",
+      "capability_hooks": [],
+      "capability_exemption": "InitiativePolicy 是设计层规则，capability 边界明确不含主动性策略",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-006"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:08.452Z"
+    },
+    {
+      "id": "TASK-012",
+      "title": "MVP 验收：测试用例 A–G + 10 分钟连续对话",
+      "outcome": "doc 06 §4 七个用例全过；连续运行 ≥10 分钟；主观评分表填写一轮。",
+      "acceptance": [
+        {
+          "criterion": "用例 A–G 逐个人工验证并记录结果",
+          "verify_by": "eval 记录文件含每用例通过/失败与备注",
+          "evidence": ""
+        },
+        {
+          "criterion": "连续对话 ≥10 分钟无崩溃，latency log 完整",
+          "verify_by": "data/ 下完整 session log",
+          "evidence": ""
+        },
+        {
+          "criterion": "doc 06 §8 MVP 完成定义逐条核对",
+          "verify_by": "逐条核对清单文件",
+          "evidence": ""
+        }
+      ],
+      "done_when": [],
+      "boundaries": [
+        "不达标项记录为缺陷，不扩大范围修"
+      ],
+      "depends_on": [
+        "TASK-003",
+        "TASK-010",
+        "TASK-011"
+      ],
+      "reads": [
+        "06_MVP_AND_EVALUATION.md",
+        ".loom/PROJECT.md"
+      ],
+      "touches": [
+        "scripts/mvp_eval.md",
+        "data/"
+      ],
+      "implements": ".loom/design/mvp-evaluation.md",
+      "design_exemption": "",
+      "capability_hooks": [
+        {
+          "node": "low-latency-pipeline#C5",
+          "at": "核对 MVP 指标时",
+          "must_produce": "分阶段 p50/p95 实测表"
+        }
+      ],
+      "capability_exemption": "",
+      "integrity_version": 1,
+      "covers": [
+        "DLV-010"
+      ],
+      "status": "open",
+      "progress": {
+        "completed": [],
+        "current": "",
+        "next": ""
+      },
+      "evidence": [],
+      "created_at": "2026-09-21T13:23:15.213Z",
+      "updated_at": "2026-09-21T13:36:08.692Z"
+    }
+  ]
 }

@@ -1,0 +1,11 @@
+{
+  "status": "provisional",
+  "title": "低延迟语音 pipeline 与 SEFA 预算",
+  "field": "低延迟语音 pipeline 与 SEFA 预算",
+  "scenario": "本地音频 + 云端 ASR/LLM/TTS 级联，SEFA 目标 500-800ms，短回复为主",
+  "confirmed_at": "",
+  "created_at": "2026-09-21T13:25:53.404Z",
+  "updated_at": "2026-09-21T13:34:01.668Z",
+  "source": "agent",
+  "selected_at": "2026-09-21T13:34:01.667Z"
+}

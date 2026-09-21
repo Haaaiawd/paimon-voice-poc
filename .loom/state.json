@@ -2,9 +2,9 @@
   "schema_version": 2,
   "project": {
     "name": "paimon-voice-poc",
-    "status": "shaping",
+    "status": "ready_for_keeper",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T12:57:41.848Z"
+    "updated_at": "2026-09-21T13:36:14.526Z"
   },
   "understanding": {
     "confirmed": [
@@ -97,6 +97,36 @@
         "text": "远程仓库：GitHub 私有仓库 Haaaiawd/paimon-voice-poc，本地 main 分支已跟踪 origin/main。",
         "source": "conversation",
         "at": "2026-09-21T12:57:41.848Z"
+      },
+      {
+        "id": "F-016",
+        "text": "LLM 第一轮赛马名单：DeepSeek + 通义千问（DashScope），均走 OpenAI-compatible 接口。",
+        "source": "conversation",
+        "at": "2026-09-21T13:23:15.015Z"
+      },
+      {
+        "id": "F-017",
+        "text": "ASR 第一轮锁定阿里云百炼/通义听悟流式语音识别（DashScope 平台）。",
+        "source": "conversation",
+        "at": "2026-09-21T13:23:15.015Z"
+      },
+      {
+        "id": "F-018",
+        "text": "TTS 第一轮只用 Fish Audio；若实测体验不达标再补赛马。",
+        "source": "conversation",
+        "at": "2026-09-21T13:23:15.015Z"
+      },
+      {
+        "id": "F-019",
+        "text": "开发环境：Windows 原生 Python 3.12（语音闭环在 Windows 跑，不在 WSL）；Docker 用于依赖打包。",
+        "source": "conversation",
+        "at": "2026-09-21T13:23:15.015Z"
+      },
+      {
+        "id": "F-020",
+        "text": "DashScope key 尚未到位，用户在申请中；ASR 集成任务在此之前保持 blocked。",
+        "source": "conversation",
+        "at": "2026-09-21T13:23:15.015Z"
       }
     ],
     "assumptions": [
@@ -120,6 +150,13 @@
         "status": "active",
         "source": "agent",
         "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "A-004",
+        "text": "Fish Audio 与 DeepSeek 的 API key 将由用户提供并放入 .env（未确认是否已有）。",
+        "status": "active",
+        "source": "agent",
+        "at": "2026-09-21T13:23:15.015Z"
       }
     ],
     "unresolved": [
@@ -127,29 +164,37 @@
         "id": "Q-001",
         "question": "第一轮 ASR Provider 选哪个？取决于现有 API Key 情况。",
         "impact": "high",
-        "status": "open",
-        "at": "2026-09-21T12:48:55.125Z"
+        "status": "resolved",
+        "at": "2026-09-21T12:48:55.125Z",
+        "resolution": "阿里云百炼/通义听悟流式识别（DashScope）",
+        "resolved_at": "2026-09-21T13:23:15.015Z"
       },
       {
         "id": "Q-002",
         "question": "第一轮 LLM 用哪家？需要对 2–4 个候选做 TTFT benchmark，不靠印象决定。",
         "impact": "high",
-        "status": "open",
-        "at": "2026-09-21T12:48:55.125Z"
+        "status": "resolved",
+        "at": "2026-09-21T12:48:55.125Z",
+        "resolution": "赛马名单：DeepSeek + 通义千问，按 TTFT 等指标实测决定",
+        "resolved_at": "2026-09-21T13:23:15.015Z"
       },
       {
         "id": "Q-003",
         "question": "第一轮 TTS 落地哪家？Fish Audio / MiniMax / ElevenLabs 至少实测两个。",
         "impact": "high",
-        "status": "open",
-        "at": "2026-09-21T12:48:55.125Z"
+        "status": "resolved",
+        "at": "2026-09-21T12:48:55.125Z",
+        "resolution": "第一轮只用 Fish Audio",
+        "resolved_at": "2026-09-21T13:23:15.015Z"
       },
       {
         "id": "Q-004",
         "question": "开发环境：开发机系统（Windows/macOS/Linux）、Python 版本、是否允许 Docker？",
         "impact": "high",
-        "status": "open",
-        "at": "2026-09-21T12:48:55.125Z"
+        "status": "resolved",
+        "at": "2026-09-21T12:48:55.125Z",
+        "resolution": "Windows 原生 Python 3.12 + Docker 打包依赖",
+        "resolved_at": "2026-09-21T13:23:15.015Z"
       },
       {
         "id": "Q-005",
@@ -171,7 +216,9 @@
   },
   "keeper": {
     "status": "not_run",
-    "attempts": []
+    "attempts": [],
+    "prepared_digest": "edd267e2ead76fffe244d855ccb5462c4b951791aa4aaaa052099c9ee9e66697",
+    "prepared_attempt": 1
   },
   "decision_ids": [
     "D-001",
@@ -181,6 +228,9 @@
     "D-005",
     "D-006",
     "D-007",
-    "D-008"
+    "D-008",
+    "D-009",
+    "D-010",
+    "D-011"
   ]
 }

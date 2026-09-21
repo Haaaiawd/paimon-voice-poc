@@ -1,0 +1,11 @@
+{
+  "status": "provisional",
+  "title": "中文流式 ASR 集成（DashScope）",
+  "field": "中文流式 ASR 集成",
+  "scenario": "阿里云百炼 paraformer-realtime-v2 WebSocket，中文口语，ASR 只做信号不做轮次裁决，key 申请中",
+  "confirmed_at": "",
+  "created_at": "2026-09-21T13:25:53.795Z",
+  "updated_at": "2026-09-21T13:34:02.070Z",
+  "source": "agent",
+  "selected_at": "2026-09-21T13:34:02.070Z"
+}

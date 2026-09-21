@@ -73,3 +73,30 @@ Current truth belongs in PROJECT.md and linked design documents. This file prese
 - Supersedes: none
 - Affects: 03_CONVERSATION_CORE.md, 07_DECISIONS_AND_OPEN_QUESTIONS.md
 - Recorded: 2026-09-21T12:48:55.137Z
+
+## D-009: TTS：第一轮单一 Fish Audio
+
+- Current decision: 第一轮只接 Fish Audio，不做多家赛马；若实测 TTFA/中文表现不达标再补 MiniMax 等对比。
+- Rationale: 减少第一阶段变量，优先打通闭环；Fish 中文表现本身强。
+- Source: conversation
+- Supersedes: D-005
+- Affects: 04_TECH_STACK_AND_OPEN_SOURCE.md, 06_MVP_AND_EVALUATION.md
+- Recorded: 2026-09-21T13:23:15.015Z
+
+## D-010: ASR：锁定阿里云百炼流式识别
+
+- Current decision: 第一轮 ASR 用阿里云百炼/通义听悟流式 API（DashScope），key 申请中。
+- Rationale: 国内直连低延迟，中文流式稳定，与通义千问 LLM 复用同平台 key。
+- Source: conversation
+- Supersedes: D-006
+- Affects: 04_TECH_STACK_AND_OPEN_SOURCE.md
+- Recorded: 2026-09-21T13:23:15.018Z
+
+## D-011: 开发环境：Windows 原生 + Docker 打包
+
+- Current decision: 语音闭环跑在 Windows 原生 Python 3.12（venv），不用 WSL2 跑音频；Docker 用于依赖打包/可复现环境。
+- Rationale: WSL2 麦克风/音频走 WSLg PulseAudio，低延迟场景有坑；Windows 音频栈最直接。
+- Source: conversation
+- Supersedes: none
+- Affects: .loom/STRUCTURE.md, 07_DECISIONS_AND_OPEN_QUESTIONS.md
+- Recorded: 2026-09-21T13:23:15.019Z

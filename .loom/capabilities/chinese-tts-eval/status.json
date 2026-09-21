@@ -1,0 +1,11 @@
+{
+  "status": "provisional",
+  "title": "中文 TTS 选型与流式评估",
+  "field": "中文 TTS 选型与流式评估",
+  "scenario": "Fish Audio 单一 provider，LLM token 流喂文本，barge-in 需要可取消，中文短句+情绪标签",
+  "confirmed_at": "",
+  "created_at": "2026-09-21T13:25:53.606Z",
+  "updated_at": "2026-09-21T13:34:01.882Z",
+  "source": "agent",
+  "selected_at": "2026-09-21T13:34:01.881Z"
+}

@@ -1,8 +1,4 @@
-# Project Whole and Document Map
-
-> This is the concise entry point, not the container for every design decision. Describe the whole and
-> link the documents that make it buildable. Add or remove documents according to project complexity.
-> The Agent uses `loom context` to compile this with the active Task and referenced files.
+# Paimon Voice PoC — Project Map
 
 ## Intended result
 
@@ -32,77 +28,66 @@
 - ASR/LLM/TTS 一律走 Provider 抽象，业务层不直接 import 供应商 SDK。
 - 不要把任务扩成"通用语音 Agent 平台"。
 - 第一版默认不真正打断正在讲话的用户；开发用耳机规避 AEC。
+- 开发环境：Windows 原生 Python 3.12（音频闭环不走 WSL）；Docker 仅用于依赖打包。
+- API keys 入 `.env`，不进仓库；DashScope key 申请中（TASK-007 的前置）。
 
 ## Design document map
 
-| 文档 | 决策面 |
-|------|--------|
-| `00_READ_ME_FIRST.md` | 接手入口、已拍板决定、核心资产清单 |
-| `01_PRODUCT_SCOPE.md` | 产品目标、核心体验十条、问题优先级 |
-| `02_SYSTEM_ARCHITECTURE.md` | 模块流水线、状态机、Provider 边界 |
-| `03_CONVERSATION_CORE.md` | 四大核心组件、事件模型、heard history |
-| `04_TECH_STACK_AND_OPEN_SOURCE.md` | 选型：Pipecat/VAD/ASR/TTS/LLM 候选 |
-| `05_PAIMON_PERSONA.md` | 人格、拌嘴机制、情绪标签、prompt 原则 |
-| `06_MVP_AND_EVALUATION.md` | MVP 闭环、延迟指标、测试用例 A–G、赛马方法 |
-| `07_DECISIONS_AND_OPEN_QUESTIONS.md` | 已决定/未决定清单、开发前待确认项 |
+| 设计文档 | 规范来源 | 决策面 |
+|----------|----------|--------|
+| `.loom/design/product-scope.md` | `01_PRODUCT_SCOPE.md` | 范围、体验十条、问题优先级 |
+| `.loom/design/system-architecture.md` | `02_SYSTEM_ARCHITECTURE.md` | 流水线、状态机、Provider 边界 |
+| `.loom/design/conversation-core.md` | `03_CONVERSATION_CORE.md` | 四大组件、事件模型、heard history |
+| `.loom/design/tech-stack.md` | `04_TECH_STACK_AND_OPEN_SOURCE.md` | 选型与赛马方法 |
+| `.loom/design/paimon-persona.md` | `05_PAIMON_PERSONA.md` | 人格、情绪标签、prompt 原则 |
+| `.loom/design/mvp-evaluation.md` | `06_MVP_AND_EVALUATION.md` | MVP 闭环、指标、用例 A–G |
+
+根目录 `00_`–`07_*.md` 是规范文档本体（编号即阅读顺序）；`.loom/design/` 是决策面索引。
+`07` 的已决定项已进入 `DECISIONS.md`（D-001–D-010）。
 
 ## Professional capability map
 
-暂无。候选领域（需要时再 `loom capability add`）：实时语音轮次检测、barge-in/打断工程、
-低延迟 pipeline 调优、中文 TTS 选型评估。
+| 能力域 | 决策树 | 影响的设计决策 |
+|--------|--------|----------------|
+| `.loom/capabilities/turn-taking/` | C1–C6：endpointing 策略、VAD 参数、兜底、barge-in、双历史、投机 | Smart Turn 接线、InterruptionManager、ContextManager |
+| `.loom/capabilities/low-latency-pipeline/` | C1–C5：预算分配、重叠执行、慢轮次 cue、buffer、指标纪律 | 延迟架构、ack cue、latency log |
+| `.loom/capabilities/chinese-tts-eval/` | C1–C5：WS 协议、flush 时机、cancel 实测、测句集、情绪映射 | TTSProvider 接口、Text Chunker、赛马方法 |
+| `.loom/capabilities/streaming-asr-zh/` | C1–C4：断句模式、静音阈值、断句权责、语气词 | ASR adapter 事件面、Paraformer 参数 |
+
+四个 dossier 均为 agent provisional 确认；关键分歧点（如 backchannel 容忍、投机深度）
+等真实数据再升级 human 确认。
 
 ## Project structure
 
-Point to `.loom/STRUCTURE.md` — where source code, tests, docs, assets, and configuration files live.
-The Agent reads this before creating or moving files.
+见 `.loom/STRUCTURE.md`：`src/conversation/`（核心）、`src/providers/asr|llm|tts/`、
+`src/turn/`、`src/character/`、`src/metrics/`、`src/runtime/`、`tests/`、`scripts/`。
+业务层只经 adapter 依赖供应商。
 
 ## Work map
 
-Point to `.loom/tasks.json`; do not duplicate volatile Task state here. Each Task uses
-`acceptance[]` with `criterion`, `verify_by`, and `evidence` fields. Completion requires one
-`acceptance_results` entry per criterion with concrete evidence. Use `done_when[]` only for legacy
-Tasks.
+`.loom/tasks.json`：12 个 task 覆盖全部 11 个 deliverable。执行序：
+TASK-001（环境）→ 002（接口）/004（音频轮次）/005（Core）并行 → 003（赛马）、
+006（打断）、007（ASR，blocked on key）、008（TTS）、009（人格）→ 010（端到端+UI+metrics）
+→ 011（主动性）→ 012（MVP 验收）。
 
 ## Decision history
 
-Consequential changes to existing decisions go in `.loom/DECISIONS.md`. Use `loom decision --json-file`
-to record what changed, why, and which tasks were affected. `loom check` warns when a done Task is
-marked affected by a later decision.
+`.loom/DECISIONS.md`。变更用 `loom decision --json-file` 记录， affected done task 会被
+`loom check` 标记需重开。
 
 ## Completion and failure
 
-完成 = `06_MVP_AND_EVALUATION.md` §8 全部满足：连续运行 ≥10 分钟、句中停顿不抢话、
-可打断且历史正确、延迟达标、人格明显、≥2 LLM + ≥2 TTS 可替换、有 latency log。
-
-看似完成实则失败：延迟达标但轮次感像客服；能打断但打断后上下文错乱；只在 demo 句子
-上表现好，自由聊天崩坏。
+完成 = `06_MVP_AND_EVALUATION.md` §8 逐条满足。看似完成实则失败：延迟达标但轮次感像
+客服；能打断但历史错乱；只在 demo 句上好用、自由聊天崩坏；capability 决策树被绕过
+（如 ASR 断句直驱轮次）而无人察觉。
 
 ## Staged visibility and review
 
-The human funds this project with attention and patience. Long stretches without visible progress
-erode that patience, even when the work is sound. Design the Work Map so the human sees the project
-growing, not just LOOM state changing.
-
-- **Human-visible acceptance**: when designing Tasks, prefer acceptance criteria whose evidence is
-  something the human can see or feel — a command running, a page rendering, a file with real content,
-  a test passing in front of them. Machine-only verification is valid but should not be the only thing
-  the human sees for long stretches.
-- **Staged showcase**: every few Tasks, or at each natural project milestone, show the human something
-  real that now works. Run the CLI, open the page, display the data, walk through the flow. A working
-  thing creates momentum; a status update does not.
-- **Staged review**: at material checkpoints, review what was built — run tests, inspect code quality,
-  check against design intent. Catch drift early while it is cheap to fix. Tell the human what passed
-  and what surprised you.
-- **Verification gate**: after a batch of Tasks, run `loom check` and the project's own tests together.
-  Both should pass before telling the human the batch is done. If tests fail or coverage drops, fix
-  before moving on — do not let partial work accumulate behind a green-looking summary.
-- **Excitement is a feature**: if the project has a surface the human will enjoy seeing — a UI, a CLI
-  with clean output, a visualization, a working demo — prioritize reaching that surface early. The
-  human's "I want to see more of this" feeling is real project fuel. Do not save the satisfying part
-  for last if an early slice can deliver it.
+工作图按"尽早有可看的东西"排：TASK-004 结束就能对麦克风看到 VAD/Smart Turn 实时判定；
+TASK-010 结束就能实际对话。每批 task 完成后跑 `loom check` + 项目自身测试再汇报。
+阶段性向人展示可运行物，不只报状态。
 
 ## Keeper handoff
 
-Before material execution, run `loom project ready` to freeze a digest, then ask a fresh Agent to
-run `loom keeper prompt` and `loom keeper record`. Repair findings and prepare again;
-a fresh Keeper must verify closure, including minor gaps. See `loom review --help`.
+执行前：`loom project ready` 冻结 digest，由新 Agent 跑 `loom keeper prompt` +
+`loom keeper record` 做独立性校验；修复发现项后重新 ready。
