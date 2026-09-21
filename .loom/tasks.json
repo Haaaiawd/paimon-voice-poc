@@ -25,7 +25,8 @@
       "done_when": [],
       "boundaries": [
         "不写业务代码",
-        "不改文档 00–07"
+        "不改文档 00–07",
+        "音频 I/O 选定 sounddevice（Windows 官方 wheel 自带 PortAudio；pipecat local extra 的 pyaudio 在 Windows 无官方 wheel），不依赖 pipecat local transport"
       ],
       "depends_on": [],
       "reads": [
@@ -55,7 +56,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.212Z",
-      "updated_at": "2026-09-21T13:36:06.778Z"
+      "updated_at": "2026-09-21T13:54:27.151Z"
     },
     {
       "id": "TASK-002",
@@ -123,15 +124,20 @@
       "outcome": "同一组 prompt 对两家 OpenAI-compatible endpoint 实测 TTFT，输出对比表。",
       "acceptance": [
         {
-          "criterion": "benchmark 脚本对 DeepSeek 与 DashScope 兼容模式各跑 ≥20 次，输出 TTFT 均值/p50/p95 与结构化输出成功率",
-          "verify_by": "python scripts/bench_llm.py 输出含两家数据的表格",
+          "criterion": "benchmark 脚本对每个已配置的 OpenAI-compatible endpoint（DeepSeek/通义千问）各跑 ≥20 次，输出 TTFT 均值/p50/p95 与结构化输出成功率对比表；至少一家可用即满足",
+          "verify_by": "python scripts/bench_llm.py 输出含实测数据的表格",
+          "evidence": ""
+        },
+        {
+          "criterion": "脚本对未配置 key 的 endpoint 优雅跳过并在输出中标注 MISSING_KEY",
+          "verify_by": "审阅脚本输出或 pytest tests/test_bench_llm.py",
           "evidence": ""
         }
       ],
       "done_when": [],
       "boundaries": [
         "只做测量脚本，不做选型结论",
-        "DeepSeek key 未到位时可先只跑通义，脚本逻辑不变"
+        "任一 key 未到位则该家标注 MISSING_KEY；零 key 时任务保持 blocked"
       ],
       "depends_on": [
         "TASK-002"
@@ -150,11 +156,6 @@
           "node": "low-latency-pipeline#C5",
           "at": "设计 benchmark 输出时",
           "must_produce": "分阶段 p50/p95 而非单点均值"
-        },
-        {
-          "node": "chinese-tts-eval#C4",
-          "at": "选测句与记录口径时",
-          "must_produce": "TTFT/TTFA/结构化成功率实测表"
         }
       ],
       "capability_exemption": "",
@@ -170,7 +171,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:07.143Z"
+      "updated_at": "2026-09-21T13:54:26.146Z"
     },
     {
       "id": "TASK-004",
@@ -365,7 +366,8 @@
         "只实现 adapter，不接 pipeline"
       ],
       "depends_on": [
-        "TASK-002"
+        "TASK-002",
+        "TASK-004"
       ],
       "reads": [
         "04_TECH_STACK_AND_OPEN_SOURCE.md",
@@ -407,7 +409,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:07.678Z"
+      "updated_at": "2026-09-21T13:54:26.363Z"
     },
     {
       "id": "TASK-008",
@@ -431,7 +433,8 @@
         "只实现 adapter"
       ],
       "depends_on": [
-        "TASK-002"
+        "TASK-002",
+        "TASK-004"
       ],
       "reads": [
         "04_TECH_STACK_AND_OPEN_SOURCE.md",
@@ -473,7 +476,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:07.858Z"
+      "updated_at": "2026-09-21T13:54:26.592Z"
     },
     {
       "id": "TASK-009",
@@ -538,6 +541,11 @@
           "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
           "verify_by": "data/ 下 latency log 含全部字段",
           "evidence": ""
+        },
+        {
+          "criterion": "ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中",
+          "verify_by": "latency log 中含 prompt_prebuilt_at 与投机命中标记，或 pytest 断言投机路径",
+          "evidence": ""
         }
       ],
       "done_when": [],
@@ -573,6 +581,11 @@
           "node": "low-latency-pipeline#C5",
           "at": "实现 metrics 时",
           "must_produce": "SEFA + barge-in latency 逐轮记录到 data/"
+        },
+        {
+          "node": "turn-taking#C6",
+          "at": "接线 ASR partial 与 LLM 启动时",
+          "must_produce": "partial 驱动 prompt 预构造、turn_complete 即提交、投机可静默丢弃"
         }
       ],
       "capability_exemption": "",
@@ -590,7 +603,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:08.260Z"
+      "updated_at": "2026-09-21T13:54:26.765Z"
     },
     {
       "id": "TASK-011",
@@ -600,6 +613,11 @@
         {
           "criterion": "评分公式与硬规则按 doc 03 §2.3 实现，LLM 可返回 NOOP",
           "verify_by": "pytest tests/test_initiative.py 覆盖 silence/说话中/超时场景",
+          "evidence": ""
+        },
+        {
+          "criterion": "SILENCE_REQUESTED 由 Core 内规则分类器基于 ASR_FINAL 文本产出（不走 LLM）；SILENCED 中 ASR 持续转写，含'派蒙'直呼或超时退出",
+          "verify_by": "pytest tests/test_silenced.py 断言进入/退出路径与规则匹配表",
           "evidence": ""
         },
         {
@@ -614,7 +632,8 @@
       ],
       "depends_on": [
         "TASK-005",
-        "TASK-009"
+        "TASK-009",
+        "TASK-010"
       ],
       "reads": [
         "03_CONVERSATION_CORE.md",
@@ -640,7 +659,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:08.452Z"
+      "updated_at": "2026-09-21T13:54:26.964Z"
     },
     {
       "id": "TASK-012",

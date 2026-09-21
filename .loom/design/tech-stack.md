@@ -20,9 +20,9 @@ conversation/ + character/ + runtime coordination + metrics。
 | Runtime | Python 3.12 + Pipecat（自定义逻辑走独立 processor/service，不改其源码） |
 | VAD | Silero VAD（只判 speech/non-speech） |
 | Turn Detection | Pipecat Smart Turn（不自训练） |
-| ASR | 阿里云百炼/通义听悟流式（DashScope；D-009 取代"暂不锁定"），key 申请中 |
+| ASR | 阿里云百炼/通义听悟流式（DashScope；D-010 取代"暂不锁定"），key 申请中 |
 | LLM | OpenAI-compatible 抽象；赛马名单 DeepSeek + 通义千问，TTFT > TPS |
-| TTS | Fish Audio 单一 provider（D-008 取代原"至少两家赛马"）；CosyVoice 后续自部署 |
+| TTS | Fish Audio 单一 provider（D-009 取代原"至少两家赛马"）；CosyVoice 后续自部署 |
 | Transport | 第一版本地，不写死；LiveKit 留给后续多端 |
 
 ## Data and state
@@ -40,7 +40,7 @@ conversation/ + character/ + runtime coordination + metrics。
 ## Implementation constraints
 
 暂不自己造：VAD / Turn Detection / ASR / TTS 模型、WebRTC 协议栈。
-开发环境：Windows 原生 Python 3.12（音频闭环不在 WSL）；Docker 用于依赖打包（D-010）。
+开发环境：Windows 原生 Python 3.12（音频闭环不在 WSL）；Docker 用于依赖打包（D-011）。
 
 ## Verification strategy
 

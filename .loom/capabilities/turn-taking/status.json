@@ -2,10 +2,10 @@
   "status": "provisional",
   "title": "实时语音轮次检测与打断工程",
   "field": "实时语音轮次检测与打断工程",
-  "scenario": "中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声",
+  "scenario": "中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声；已知模型中文 FNR 9.26% 需观测 fallback 率",
   "confirmed_at": "",
   "created_at": "2026-09-21T13:25:53.202Z",
-  "updated_at": "2026-09-21T13:34:01.414Z",
+  "updated_at": "2026-09-21T13:54:50.957Z",
   "source": "agent",
-  "selected_at": "2026-09-21T13:34:01.414Z"
+  "selected_at": "2026-09-21T13:54:50.957Z"
 }

@@ -16,7 +16,7 @@
 
 ## Project scenario
 
-中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声
+中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声；已知模型中文 FNR 9.26% 需观测 fallback 率
 
 ## Decision tree
 
@@ -57,10 +57,12 @@
 - options:
   - A: 无限等待 → leads_to: 死等，违反延迟预算
   - B: SmartTurnParams.stop_secs（默认 3.0s）静音超时兜底 complete → leads_to: C4
-- decide_by: 防止思考停顿/拖长尾音导致死锁；3s 是默认值，真实对话后按"抢话率 vs 死等率"调
-- source: pipecat-smart-turn-mechanics.md
+- decide_by: 防止思考停顿/拖长尾音导致死锁；3s 是默认值，真实对话后按"抢话率 vs 死等率"调。
+  注意 Smart Turn 中文准确率 85.79%/FNR 9.26%（23 语言倒数第三）——约 9% 轮次会落到兜底，
+  metrics 必须记录每次 complete 的来源（model vs fallback）以区分模型短板与接线错误
+- source: pipecat-smart-turn-mechanics.md, smart-turn-zh-benchmark.md
 - counterexample: 用户场景含长思考（读卡号、查信息）时主动放宽该值
-- output: 初始 stop_secs=3.0，列为可调参数写进 metrics 观察
+- output: 初始 stop_secs=3.0，列为可调参数；metrics 记录判定来源，观察 fallback 率
 
 ### C4: barge-in 触发条件
 
@@ -110,7 +112,9 @@
 - 用户讲完后死等（模型 incomplete + 兜底过长）；
 - 打断后冒出"陈旧响应"（逻辑层取消不完整，签名式失败）；
 - 用户"嗯"一声派蒙就被切断（backchannel 误伤，需要最短时长）；
-- 派蒙打断自己（回声被 VAD 检成用户语音——第一版耳机规避）。
+- 派蒙打断自己（回声被 VAD 检成用户语音——第一版耳机规避）；
+- fallback 率异常高（>10% 轮次靠超时兜底——中文模型短板的信号，不是接线问题）；
+- 调试中无法说出一次 complete 是模型判的还是兜底判的（观测缺失）。
 
 ## Relationships without merger
 

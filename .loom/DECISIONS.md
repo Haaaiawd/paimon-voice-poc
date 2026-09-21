@@ -100,3 +100,21 @@ Current truth belongs in PROJECT.md and linked design documents. This file prese
 - Supersedes: none
 - Affects: .loom/STRUCTURE.md, 07_DECISIONS_AND_OPEN_QUESTIONS.md
 - Recorded: 2026-09-21T13:23:15.019Z
+
+## D-012: Pipecat 原语与自研 Core 的权责边界
+
+- Current decision: 判定原语（VAD/SmartTurn/帧事件）用 Pipecat；状态机、InitiativePolicy、双历史、打断处置归 src/conversation/ 自研。Pipecat 内置 interruption 只当媒体层信号源，打断路径唯一，禁止双路径并行。
+- Rationale: Keeper 指出 TASK-010 集成时存在 Pipecat 默认中断逻辑与 InterruptionManager 并行生效的双打断风险；明确边界防止接线时两套机制打架。
+- Source: conversation
+- Supersedes: none
+- Affects: .loom/design/conversation-core.md, .loom/design/system-architecture.md
+- Recorded: 2026-09-21T13:59:00.469Z
+
+## D-013: SILENCED 的生产者与退出规则
+
+- Current decision: SILENCE_REQUESTED 由 Conversation Core 内规则分类器基于 ASR_FINAL 文本产出（闭嘴/别说话/安静类关键词，不走 LLM）；SILENCED 中 ASR 持续转写，命中'派蒙'直呼/超时/高优事件退出。
+- Rationale: doc 03 有 SILENCE_REQUESTED 事件但未指定生产者；规则分类器省一次 LLM 往返且确定性可测。
+- Source: conversation
+- Supersedes: none
+- Affects: .loom/design/conversation-core.md, .loom/tasks.json
+- Recorded: 2026-09-21T13:59:00.470Z

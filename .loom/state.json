@@ -4,7 +4,7 @@
     "name": "paimon-voice-poc",
     "status": "ready_for_keeper",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T13:36:14.526Z"
+    "updated_at": "2026-09-21T13:59:00.471Z"
   },
   "understanding": {
     "confirmed": [
@@ -127,6 +127,24 @@
         "text": "DashScope key 尚未到位，用户在申请中；ASR 集成任务在此之前保持 blocked。",
         "source": "conversation",
         "at": "2026-09-21T13:23:15.015Z"
+      },
+      {
+        "id": "F-021",
+        "text": "Smart Turn v3.2 官方 benchmark 中文准确率 85.79%、FNR 9.26%（23 语言倒数第三）；约 9% 轮次会落入 3s 静音兜底，metrics 需记录每次 complete 的来源以区分模型短板与接线错误。",
+        "source": "conversation",
+        "at": "2026-09-21T13:59:00.468Z"
+      },
+      {
+        "id": "F-022",
+        "text": "reference/ 目录以 git submodule（--depth 1）挂载 pipecat/smart-turn/silero-vad/fish-speech/funasr/cosyvoice/livekit 共 7 个开源项目，只作只读参考，不作依赖 import。",
+        "source": "conversation",
+        "at": "2026-09-21T13:59:00.469Z"
+      },
+      {
+        "id": "F-023",
+        "text": "TASK-003/007/008 依赖 API key：DeepSeek 或 DashScope 任一（benchmark）、DashScope（ASR）、Fish Audio（TTS）；key 写入 .env 后可执行验收。",
+        "source": "conversation",
+        "at": "2026-09-21T13:59:00.469Z"
       }
     ],
     "assumptions": [
@@ -215,10 +233,88 @@
     ]
   },
   "keeper": {
-    "status": "not_run",
-    "attempts": [],
-    "prepared_digest": "edd267e2ead76fffe244d855ccb5462c4b951791aa4aaaa052099c9ee9e66697",
-    "prepared_attempt": 1
+    "status": "needs_revision",
+    "attempts": [
+      {
+        "run_id": "keeper-subagent-devin-2026-09-21-r1",
+        "prepared_digest": "edd267e2ead76fffe244d855ccb5462c4b951791aa4aaaa052099c9ee9e66697",
+        "verdict": "needs_revision",
+        "summary": "Handoff chain is largely intact: intent is clear (PC Paimon voice companion, SEFA 500-800ms target range), all 11 deliverables are nominally covered by 12 acyclic tasks, first task TASK-001 is concretely executable, and capability hooks map to real decision-tree nodes whose API names were verified against the vendored pipecat checkout. However I found 8 real (all minor, none blocking the first task) inconsistencies: an acceptance/boundary contradiction in TASK-003, normative docs stale relative to decisions D-009/D-010/D-011 (including wrong decision-ID citations in tech-stack.md and an MVP §8 clause that only survives via a reconciliation note in a design doc TASK-012 does not read), the key speculation mechanism (turn-taking#C6) referenced by no task, missing dependency edges for audio I/O and end-to-end SILENCED verification, an unspecified SILENCE_REQUESTED producer, missing Chinese-accuracy caveat for Smart Turn, an implicit Pipecat-vs-custom-Core ownership boundary, and deliverable drift in DLV-009.",
+        "evidence": [
+          ".loom/PROJECT.md:7 SEFA 500-800ms target declared as range not hard commitment; line 46 says D-001-D-010 while DECISIONS.md contains D-001-D-011",
+          ".loom/tasks.json TASK-003 (lines 126-135): criterion demands both-vendor table vs boundary allowing DeepSeek-missing; F-020 in state.json records DashScope key still pending",
+          ".loom/tasks.json TASK-007/008 verify_by require live mic/speaker demos but depends_on=[TASK-002] only; TASK-011 acceptance mentions 端到端 verification but depends_on=[TASK-005,TASK-009]",
+          ".loom/design/tech-stack.md lines 23,25,43: decision IDs D-009/D-008/D-010 cited where DECISIONS.md shows the correct IDs are D-010/D-009/D-011",
+          "06_MVP_AND_EVALUATION.md §8 line 263 '可替换至少 2 个 TTS Provider' vs DECISIONS.md D-009 single Fish Audio; reconciliation note exists only at .loom/design/mvp-evaluation.md:41, absent from TASK-012 reads",
+          "07_DECISIONS_AND_OPEN_QUESTIONS.md lines 100-114: '尚未决定' 1-3 remain open in the normative doc though resolved by D-009/D-010 and F-016/F-017",
+          "turn-taking/capability.md C6 defines partial-driven speculation; no task capability_hooks references it (hooks used: turn-taking C1/C2/C4/C5, low-latency C1/C5, chinese-tts-eval C1-C4, streaming-asr-zh C1-C3)",
+          "verified against reference/pipecat checkout: LocalSmartTurnAnalyzerV3 (local_smart_turn_v3.py), TurnAnalyzerUserTurnStopStrategy, SmartTurnParams(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) all exist; v3.2 model bundled in package, CPU onnxruntime, no download needed; smart-turn README confirms 23 languages including Chinese; HF benchmark smart-turn-v3.2-cpu shows Chinese accuracy 85.79% FNR 9.26%",
+          "dependency graph verified acyclic: TASK-001 is the unique zero-dependency task and is concretely executable (write pyproject.toml/.env.example/Dockerfile, run pip install + docker build)",
+          "loom check: healthy=true, 0 errors; warnings only for the 4 provisional dossiers and 11 not-yet-done deliverables; blocked=0 though F-020 says ASR task stays blocked (key-blocked state modeled only as boundary text in TASK-007/008)",
+          "git status: .gitmodules + 4 reference submodules staged but uncommitted; reference/cosyvoice untracked — frozen-for-keeper tree differs from committed tree"
+        ],
+        "gaps": [
+          {
+            "gap": "TASK-003 acceptance contradicts its own boundary and has no modeled key precondition: criterion requires a table with BOTH DeepSeek and DashScope data (>=20 runs each), while the boundary permits running only Tongyi when the DeepSeek key is missing; additionally F-020 records the DashScope key as still pending, so with zero keys the task is entirely unrunnable and its acceptance is literally unreachable under the declared contingency.",
+            "severity": "minor",
+            "why_it_blocks_start": "A fresh Agent executing TASK-003 with one or zero keys cannot tell whether the task is done or blocked; it must guess whether the boundary relaxes the criterion, and a TASK-012-blocked chain inherits the ambiguity.",
+            "evidence_to_close": "Acceptance rewritten to 'each configured provider runs >=20 times, at least one provider required, missing-key providers marked N/A in output', or an explicit key precondition is declared;TASK-003 criterion and boundary no longer contradict."
+          },
+          {
+            "gap": "Normative docs drifted from recorded decisions: root 06 §8 still requires '可替换至少 2 个 TTS Provider' (superseded by D-009 single-Fish; the interface-level reconciliation note lives only in .loom/design/mvp-evaluation.md which TASK-012 does not read); root 07 '尚未决定' items 1-3 are already resolved by D-009/D-010/F-016/F-017 but remain listed open; root 04 §6/§7 still say ASR unlocked / TTS two-vendor race; .loom/design/tech-stack.md cites wrong decision IDs throughout (ASR cites D-009, should be D-010; TTS cites D-008, should be D-009; Docker cites D-010, should be D-011); PROJECT.md says decisions are D-001-D-010 while D-011 exists. Housekeeping echoes: assumption A-001 still active though F-015 confirmed the repo; Q-006 marked resolved with empty resolution.",
+            "severity": "minor",
+            "why_it_blocks_start": "At TASK-012 an agent reading root 06 §8 literally will record '≥2 TTS providers' as a failed MVP line or must independently rediscover the interface-level interpretation; wrong decision-ID citations mislead anyone tracing rationale.",
+            "evidence_to_close": "Root 06 §8 / 07 / 04 updated or annotated to reflect D-009/D-010; tech-stack.md decision IDs corrected; PROJECT.md decision range corrected; TASK-012 reads include .loom/design/mvp-evaluation.md (or 06 §8 itself amended); A-001 resolved, Q-006 resolution filled."
+          },
+          {
+            "gap": "The speculation handshake that makes the latency budget reachable — ASR partial drives prompt pre-construction and LLM submission fires on turn_complete OR final (turn-taking#C6, asr-turn-interplay 'partial 驱动准备、final 驱动提交') — is referenced by no task's capability_hooks and covered by no acceptance criterion; no task owns which transcript text is submitted to the LLM at turn-confirm time.",
+            "severity": "minor",
+            "why_it_blocks_start": "An implementer defaulting to 'wait for ASR_FINAL before calling LLM' combined with max_sentence_silence=500ms inflates the ASR stage to ~600ms+ versus the 50-150ms budget, silently breaking SEFA — exactly the 'capability tree bypassed and nobody noticed' failure mode PROJECT.md §Completion warns about.",
+            "evidence_to_close": "TASK-005 or TASK-010 gains a turn-taking#C6 hook and an acceptance assertion (e.g. recorded-event test asserting turn_complete submits the latest partial transcript without waiting for ASR_FINAL), or the design docs explicitly delegate submission timing with the reason."
+          },
+          {
+            "gap": "Missing dependency edges: TASK-007 and TASK-008 verify_by demos need real microphone capture / speaker playback, which TASK-004 builds (src/turn, src/runtime), yet both depend only on TASK-002; TASK-011's second criterion requires end-to-end SILENCED verification but depends_on lacks TASK-010 (the pipeline assembly it would run on). PROJECT.md's stated order (010 → 011) is not encoded in depends_on.",
+            "severity": "minor",
+            "why_it_blocks_start": "An Agent selecting by depends_on may take TASK-007/008 before TASK-004 and be forced to write throwaway audio I/O duplicating the real layer, or attempt TASK-011's end-to-end criterion with no pipeline.",
+            "evidence_to_close": "depends_on edges added (007/008 → 004, 011 → 010) or boundaries explicitly state the demo supplies its own minimal audio I/O / that integration-test scope suffices for TASK-011."
+          },
+          {
+            "gap": "SILENCED lifecycle producer unspecified: the SILENCE_REQUESTED event (doc 03 §4) has no declared producer — no doc or task says who detects '闭嘴两分钟' (keyword rule vs LLM intent) or who detects the wake condition '喊派蒙' inside SILENCED, while TASK-011 acceptance requires both behaviors.",
+            "severity": "minor",
+            "why_it_blocks_start": "The TASK-011 implementer must invent an undesigned NLU/rule mechanism; different agents would produce incomparable implementations of a user-facing safety behavior.",
+            "evidence_to_close": "Doc 03 or TASK-011 names the producer and minimal mechanism (e.g. ASR_FINAL text rule-matching for silence request and wake phrase), with tunables noted."
+          },
+          {
+            "gap": "turn-taking dossier claims '模型判定是自然度上限' but does not record smart-turn-v3.2's official Chinese benchmark (accuracy 85.79%, FNR 9.26% — third-worst of 23 languages): ~9% of complete turns will fall into the stop_secs=3.0 fallback and dominate SEFA p95; C3's tuning expectation is unanchored to this fact.",
+            "severity": "minor",
+            "why_it_blocks_start": "During TASK-004 manual verification or TASK-012 eval, occasional ~3s dead air will be indistinguishable from wiring bugs; the Agent cannot tell model shortfall from misconfiguration.",
+            "evidence_to_close": "Research file or C3 records the Chinese accuracy/FNR numbers and the contingency (shorter stop_secs, FilterIncomplete supplement, or accepted p95 hit)."
+          },
+          {
+            "gap": "The boundary between Pipecat's native machinery and the self-built Conversation Core is implicit: Pipecat ships user-turn start/stop strategies, InterruptionFrame broadcast, and context aggregators, while the project builds TurnManager/InterruptionManager/dual-history — no doc or task states whether native interruption is reused as trigger or disabled, or whether aggregators are bypassed, so double interruption paths or double context writes are decidable only by guesswork at TASK-010 integration time.",
+            "severity": "minor",
+            "why_it_blocks_start": "At integration, an Agent must guess the intended architecture; a wrong guess yields duplicate interruption handling or Pipecat aggregator context diverging from the designed heard/logical history.",
+            "evidence_to_close": "02_SYSTEM_ARCHITECTURE.md or conversation-core design doc adds a mapping: which Pipecat primitives are reused as signal sources (VAD, turn strategies, InterruptionFrame) vs which are owned by Core (state machine, interruption six-step, context history)."
+          },
+          {
+            "gap": "DLV-009 drift: deliverable title still promises 'LLM TTFT benchmark + TTS 对比测试' but post-D-009 no task delivers TTS comparison; TASK-003's chinese-tts-eval#C4 hook must_produce 'TTFT/TTFA/结构化成功率实测表' imports TTFA into a pure LLM benchmark — a misfired hook.",
+            "severity": "minor",
+            "why_it_blocks_start": "Deliverable coverage is nominally complete while half of DLV-009's promise has no owner; the hook's must_produce misleads TASK-003's acceptance scope.",
+            "evidence_to_close": "DLV-009 title narrowed to the LLM benchmark (or a Fish test-sentence-set task added to own TTS evaluation), and TASK-003's hook wording corrected."
+          }
+        ],
+        "review": {
+          "mode": "independent",
+          "reviewer_id": "devin-keeper-subagent",
+          "evidence": "Host spawned an independent subagent with no access to the shaping conversation. Review was conducted solely from files on disk (.loom/*, root 00-07 docs, reference/pipecat source checkout) plus `loom context --keeper`, `loom check`, and one external web check of smart-turn-v3 language support. No shaping-context assumptions were used."
+        },
+        "can_auto_pass": false,
+        "at": "2026-09-21T13:48:42.260Z",
+        "closure_results": []
+      }
+    ],
+    "prepared_digest": "52e695141e41864c8587f942ba9b8c4fe623434a468431b57239159a1d4df3e7",
+    "prepared_attempt": 2
   },
   "decision_ids": [
     "D-001",
@@ -231,6 +327,8 @@
     "D-008",
     "D-009",
     "D-010",
-    "D-011"
+    "D-011",
+    "D-012",
+    "D-013"
   ]
 }

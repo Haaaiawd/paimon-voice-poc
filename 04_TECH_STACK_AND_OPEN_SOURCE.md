@@ -107,6 +107,10 @@ https://github.com/livekit/livekit
 
 先验证 Conversation Core。
 
+> 更新（2026-09-21，D-010）：已锁定阿里云百炼/通义听悟 `paraformer-realtime-v2`
+> WebSocket 流式。关键参数：VAD 断句（非语义断句）、`max_sentence_silence≈500ms`、
+> 保留语气词。详见 `.loom/capabilities/streaming-asr-zh/`。
+
 ### 后续开源候选
 
 FunASR：
@@ -126,6 +130,9 @@ SenseVoice：
 ## 7. TTS 候选
 
 第一阶段做 Provider 赛马，不锁死。
+
+> 更新（2026-09-21，D-009）：第一轮只用 Fish Audio 打通闭环，赛马推迟到
+> 体验不达标时。下方各家仍作为备选参考保留。
 
 ### Fish Audio
 

@@ -260,5 +260,6 @@ TTFT > TPS
 - 对话延迟达到可接受范围；
 - 派蒙人格明显；
 - 可替换至少 2 个 LLM Provider；
-- 可替换至少 2 个 TTS Provider；
+- 可替换至少 2 个 TTS Provider（更新：第一轮仅接 Fish Audio，"可替换"指
+  Provider 接口层面成立、第二家随时可插，见 D-009）；
 - 有基础 latency log。

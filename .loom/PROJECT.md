@@ -43,7 +43,7 @@
 | `.loom/design/mvp-evaluation.md` | `06_MVP_AND_EVALUATION.md` | MVP 闭环、指标、用例 A–G |
 
 根目录 `00_`–`07_*.md` 是规范文档本体（编号即阅读顺序）；`.loom/design/` 是决策面索引。
-`07` 的已决定项已进入 `DECISIONS.md`（D-001–D-010）。
+`07` 的已决定项已进入 `DECISIONS.md`（D-001–D-011）。
 
 ## Professional capability map
 

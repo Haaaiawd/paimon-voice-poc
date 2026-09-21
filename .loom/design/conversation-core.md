@@ -47,6 +47,30 @@ Agent 输入（doc 03 §5）与输出（§6：speech/emotion/energy/should_conti
 
 第一版不真正打断正在讲话的用户（D-008）；主动插话仅限轮次结束/长沉默/明显留白。
 
+### Pipecat 原语 vs 自研 Core 的权责边界（防双路径）
+
+Pipecat 自带 turn strategy / InterruptionFrame / context aggregator。集成规则：
+
+- **判定原语用 Pipecat**：VAD、Smart Turn、UserStartedSpeakingFrame 等帧事件；
+- **裁决与策略归 Core**：Pipecat 事件经 adapter 翻译成我们的域事件
+  （USER_SPEECH_STARTED/TURN_COMPLETE/...），状态迁移、InitiativePolicy、双历史
+  只存在于 `src/conversation/`；
+- **打断路径唯一**：Pipecat 内置 interruption 机制只当"媒体层信号源"用（VAD 触发
+  InterruptionFrame → 我们接管停播+清 buffer+取消 LLM）；禁止 Pipecat 默认中断逻辑
+  与 InterruptionManager 并行生效。TurnManager 同理：包装 Pipecat strategy 的输出，
+  不重复实现判定。
+
+### SILENCED 的生产者与退出
+
+谁产出 SILENCE_REQUESTED、谁在 SILENCED 中识别唤醒，doc 03 未指定，此处补定：
+
+- **进入**：Conversation Core 内的规则分类器消费 ASR_FINAL 文本，命中
+  "闭嘴/别说话/安静一会儿"类指令 → 发 SILENCE_REQUESTED → 状态机进 SILENCED。
+  规则分类不走 LLM（省一次往返，且确定性可测）；匹配表可配置；
+- **退出**（任一）：ASR_FINAL 含"派蒙"直呼；超过 silence timeout（默认时长可配，
+  或被用户指定的"两分钟"覆盖）；高优先级系统事件；
+- SILENCED 中 ASR 持续转写（否则无法听到唤醒词），但不进 LLM、不触发主动插话。
+
 ## Verification strategy
 
 TASK-005（状态机+TurnManager 单测）、TASK-006（打断六步 + heard history 断言）、
