@@ -4,7 +4,7 @@
     "name": "paimon-voice-poc",
     "status": "ready_for_keeper",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T15:38:55.613Z"
+    "updated_at": "2026-09-21T15:41:45.335Z"
   },
   "understanding": {
     "confirmed": [
@@ -187,6 +187,18 @@
         "text": "本机存在代理 127.0.0.1:55483（WSL 环境变量注入 + Windows 系统层），给每次 TLS 连接加 ~1.9s：经代理 LLM TTFT 2.6s vs 直连 233ms。语音链路必须绕过代理直连 dashscope.aliyuncs.com / api.fish.audio，.env.example 已记录。",
         "source": "conversation",
         "at": "2026-09-21T15:38:55.611Z"
+      },
+      {
+        "id": "F-031",
+        "text": "百炼三层链路自闭环验证通过（2026-09-21）：cosyvoice-v3-flash TTS 生成中文语音 PCM(16k) → paraformer-realtime-v2 ASR 流式识别回原文，逐字正确（仅标点归一化），partial/final 事件流与词级时间戳正常；qwen-flash LLM TTFT 233–448ms。",
+        "source": "conversation",
+        "at": "2026-09-21T15:41:45.334Z"
+      },
+      {
+        "id": "F-032",
+        "text": "Windows 控制台 GBK 编码会把 UTF-8 中文显示为乱码——测试脚本需 PYTHONIOENCODING=utf-8 或 stdout.reconfigure；Terminal UI 实现时同理。",
+        "source": "conversation",
+        "at": "2026-09-21T15:41:45.335Z"
       }
     ],
     "assumptions": [
