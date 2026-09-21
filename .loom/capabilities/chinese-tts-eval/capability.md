@@ -16,7 +16,7 @@
 
 ## Project scenario
 
-Fish Audio 单一 provider，LLM token 流喂文本，barge-in 需要可取消，中文短句+情绪标签
+双 TTS adapter 实测赛马：Fish s2.1-pro-free（免费但跨境延迟高）vs 百炼 cosyvoice-v3-flash（直连 ~0.6-0.8s + Instruct 情绪控制），真实管线数据裁决
 
 ## Decision tree
 

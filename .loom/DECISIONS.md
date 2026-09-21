@@ -118,3 +118,12 @@ Current truth belongs in PROJECT.md and linked design documents. This file prese
 - Supersedes: none
 - Affects: .loom/design/conversation-core.md, .loom/tasks.json
 - Recorded: 2026-09-21T13:59:00.470Z
+
+## D-014: TTS 改为双 adapter 实测赛马
+
+- Current decision: 第一轮同时实现 Fish（s2.1-pro-free 免费层）与百炼 cosyvoice-v3-flash 两个 TTS adapter，真实管线内对比热 TTFA 与中文自然度后定主力；败方保留为备选路径。
+- Rationale: Fish 免费但跨境延迟实测 0.9–4s（HTTP）；百炼境内直连 ~0.6–0.8s 含握手且支持 Instruct 情绪控制。两边都有实测依据，用管线数据裁决而非拍脑袋。
+- Source: conversation
+- Supersedes: D-009
+- Affects: .loom/design/tech-stack.md, .loom/design/conversation-core.md, .loom/capabilities/chinese-tts-eval/
+- Recorded: 2026-09-21T15:38:55.611Z
