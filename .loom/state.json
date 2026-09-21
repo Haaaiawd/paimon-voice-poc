@@ -1,0 +1,178 @@
+{
+  "schema_version": 2,
+  "project": {
+    "name": "paimon-voice-poc",
+    "status": "shaping",
+    "created_at": "2026-09-21T12:46:06.954Z",
+    "updated_at": "2026-09-21T12:48:55.138Z"
+  },
+  "understanding": {
+    "confirmed": [
+      {
+        "id": "F-001",
+        "text": "项目目标：PC 本地运行的实时语音 Companion，角色为派蒙。核心体验是低延迟、自然轮次、可打断、适度主动插话，不是一问一答式语音助手。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-002",
+        "text": "第一阶段范围限制：不做 3D/X4 Air/直播平台/手机 App/视觉理解/长期记忆/自训练 ASR、TTS、LLM。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-003",
+        "text": "技术方向：Python + Pipecat 作为实时语音 pipeline 底盘；轮次检测用 Silero VAD + Pipecat Smart Turn。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-004",
+        "text": "ASR/LLM/TTS 全部通过 Provider 抽象接入，业务层不直接 import 供应商 SDK；LLM 第一版用 OpenAI-compatible adapter。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-005",
+        "text": "TTS 第一阶段赛马候选：Fish Audio、MiniMax、ElevenLabs；CosyVoice 为后续自部署候选。选型标准为低 TTFA、中文自然度、情绪表现、可 streaming、易取消。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-006",
+        "text": "ASR 第一阶段使用低延迟云端 Streaming ASR API；FunASR/SenseVoice/Whisper 类方案后续再评估。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-007",
+        "text": "项目核心资产是 Conversation Core：TurnManager、InterruptionManager、InitiativePolicy、ContextManager、Conversation State Machine、Persona/Behavior Policy、Latency Metrics。模型可换，这部分必须自己写。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-008",
+        "text": "对话状态机最小集合：IDLE / LISTENING / POSSIBLE_END / THINKING / SPEAKING / INTERRUPTED / SILENCED。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-009",
+        "text": "上下文管理区分 Logical History（模型生成了什么）与 Heard History（用户实际听到了什么），被打断时不能混写。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-010",
+        "text": "LLM 输出结构化结果（speech/emotion/energy/should_continue），为未来 TTS 情绪、表情、3D 动作扩展预留接口。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-011",
+        "text": "第一版开发使用耳机，暂时规避 AEC/回声消除问题；产品化后再考虑 WebRTC AEC。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-012",
+        "text": "第一版 UI 为 Terminal，无需 GUI；MVP 目标 SEFA 500–800ms 区间、连续运行 ≥10 分钟、可替换 ≥2 个 LLM 与 ≥2 个 TTS Provider、有基础 latency log。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-013",
+        "text": "主动性策略第一版用可解释评分规则，硬规则优先：用户说话中或 SILENCED 状态下 NEVER_SPEAK；第一版默认不真正打断正在讲话的用户。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-014",
+        "text": "项目文档 00–07（README/scope/architecture/conversation core/tech stack/persona/MVP/decisions）已存在，是 loom 初始事实来源。",
+        "source": "conversation",
+        "at": "2026-09-21T12:48:55.124Z"
+      }
+    ],
+    "assumptions": [
+      {
+        "id": "A-001",
+        "text": "仓库将托管到 GitHub 私有仓库用于云端同步（待确认平台与可见性）。",
+        "status": "active",
+        "source": "agent",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "A-002",
+        "text": ".loom/ 目录纳入 git 版本控制，使项目状态随仓库同步。",
+        "status": "active",
+        "source": "agent",
+        "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "A-003",
+        "text": "默认分支为 main。",
+        "status": "active",
+        "source": "agent",
+        "at": "2026-09-21T12:48:55.125Z"
+      }
+    ],
+    "unresolved": [
+      {
+        "id": "Q-001",
+        "question": "第一轮 ASR Provider 选哪个？取决于现有 API Key 情况。",
+        "impact": "high",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "Q-002",
+        "question": "第一轮 LLM 用哪家？需要对 2–4 个候选做 TTFT benchmark，不靠印象决定。",
+        "impact": "high",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "Q-003",
+        "question": "第一轮 TTS 落地哪家？Fish Audio / MiniMax / ElevenLabs 至少实测两个。",
+        "impact": "high",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "Q-004",
+        "question": "开发环境：开发机系统（Windows/macOS/Linux）、Python 版本、是否允许 Docker？",
+        "impact": "high",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "Q-005",
+        "question": "主动插话频率参数：第一版用规则，实际聊天后调。",
+        "impact": "medium",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      },
+      {
+        "id": "Q-006",
+        "question": "远程仓库托管平台与可见性（GitHub private?）以及仓库名。",
+        "impact": "medium",
+        "status": "open",
+        "at": "2026-09-21T12:48:55.125Z"
+      }
+    ]
+  },
+  "keeper": {
+    "status": "not_run",
+    "attempts": []
+  },
+  "decision_ids": [
+    "D-001",
+    "D-002",
+    "D-003",
+    "D-004",
+    "D-005",
+    "D-006",
+    "D-007",
+    "D-008"
+  ]
+}
