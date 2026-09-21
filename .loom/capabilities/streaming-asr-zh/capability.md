@@ -16,7 +16,7 @@ TTS 侧（chinese-tts-eval）。
 
 ## Project scenario
 
-阿里云百炼 paraformer-realtime-v2 WebSocket，中文口语，ASR 只做信号不做轮次裁决，key 申请中
+阿里云百炼 paraformer-realtime-v2 WebSocket，中文口语，ASR 只做信号不做轮次裁决；key 已到位且握手实测通过
 
 ## Decision tree
 

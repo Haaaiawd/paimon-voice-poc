@@ -4,7 +4,7 @@
     "name": "paimon-voice-poc",
     "status": "ready_for_keeper",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T15:57:16.347Z"
+    "updated_at": "2026-09-21T16:19:27.961Z"
   },
   "understanding": {
     "confirmed": [
@@ -211,6 +211,12 @@
         "text": "F-018（第一轮只用 Fish）已被 D-014 取代：TTS 为 Fish + 百炼 cosyvoice-v3-flash 双 adapter 赛马。",
         "source": "conversation",
         "at": "2026-09-21T15:57:15.289Z"
+      },
+      {
+        "id": "F-035",
+        "text": "A-005 旧框架已退役：TTS 不再是'Fish 主用+超阈值回退'，而是 D-014 的双 adapter 平等赛马——Fish s2.1-pro-free 与百炼 cosyvoice-v3-flash 都进真实管线，以热 TTFA/自然度对比数据裁决。",
+        "source": "conversation",
+        "at": "2026-09-21T16:19:16.723Z"
       }
     ],
     "assumptions": [
@@ -245,7 +251,7 @@
       {
         "id": "A-005",
         "text": "Fish s2.1-pro-free 在 WS 常驻连接下的热 TTFA 可能显著低于 HTTP 实测值；若管线实测仍 >300ms 则触发切换到百炼 CosyVoice（赛马回退路径）。",
-        "status": "active",
+        "status": "retired",
         "source": "agent",
         "at": "2026-09-21T14:25:03.837Z"
       }
@@ -466,10 +472,62 @@
             "evidence": "CLOSED (with a new staleness echo carried into new gap 2). DLV-009 title narrowed to '赛马脚本：LLM TTFT benchmark（TTS 第一轮仅 Fish，其实测并入 TASK-008 验收）' — no longer promises a TTS comparison deliverable; TASK-003's hook corrected to low-latency-pipeline#C5 (分阶段 p50/p95). The parenthetical 'TTS 第一轮仅 Fish' is itself now stale under D-014 — tracked in new gap 2."
           }
         ]
+      },
+      {
+        "run_id": "keeper-subagent-devin-2026-09-22-r3",
+        "prepared_digest": "28c3e266c5a0ec9d7b4290b3a56cf23a023e53860c78ccbec9fa7f24ad4871e1",
+        "verdict": "needs_revision",
+        "summary": "All three round-2 gaps are verifiably closed on disk: TASK-008 now owns the D-014 dual-adapter race (Fish s2.1-pro-free + Bailian cosyvoice-v3-flash each with adapter acceptance plus a >=10-round in-pipeline hot-TTFA comparison table and recorded winner decision), its hooks no longer frame Bailian as a >300ms fallback, and chinese-tts-eval C1/C2/C5 now cover continue-task/finish-task and Instruct; every stale spot enumerated in round-2 gap 1 was swept (tech-stack TTS/ASR rows, 04/06/07 D-014 notes, DLV-009 retitle, PROJECT.md D-001-D-014 + keys-present + Clash proxy note, F-018/F-020 superseded via F-034/F-033); A-001 is retired and Q-006 carries a real resolution. However the sweep missed residual instances of the same drift class: one stale 'key 申请中' survives in the streaming-asr-zh dossier (capability.md:19 and status.json:5), assumption A-005 still frames Bailian as the conditional >300ms fallback that D-014 replaced, the entry-point doc 00_READ_ME_FIRST.md:53 keeps the pre-decision TTS candidate list with no D-014 annotation, and 07:160's footnote range D-009-D-011 omits D-014. All new findings are minor; TASK-001 and TASK-008 remain executable.",
+        "evidence": [
+          ".loom/tasks.json TASK-008 (lines 415-491): dual-adapter title/outcome/acceptance incl. bailian_demo continue-task+finish-task criterion and >=10-round in-pipeline hot-TTFA 对比表 verify_by 'data/ 下 tts_benchmark 结果文件 + loom decision 更新'; hooks reframed dual, no 300ms/回退 (grep empty across tasks.json)",
+          ".loom/capabilities/chinese-tts-eval/capability.md: scenario=双 adapter 赛马; C1/C2 cite 百炼 continue-task/finish-task, C5 cites Instruct; sources include bailian-cosyvoice-streaming.md",
+          ".loom/design/tech-stack.md:23,25: ASR row 'key 已到位并实测通过', TTS row dual-adapter (D-014 取代 D-009); 04:134 / 06:263-264 / 07:100-101,156 D-014 notes; .loom/design/mvp-evaluation.md:32,41 updated",
+          ".loom/deliverables.json DLV-009 title '赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）'; all 11 deliverables covered",
+          ".loom/PROJECT.md: 'D-001–D-014', keys 到位并实测通过, Clash 代理 127.0.0.1:55483 +~1.9s TLS 绕行注记, work map 'key 已到位' for 007/008",
+          ".loom/state.json: A-001 status='retired'; Q-006 resolution filled; F-033/F-034 supersede F-020/F-018; residual A-005 still carries '>300ms 则触发切换到百炼' fallback framing",
+          "Residual sweep: .loom/capabilities/streaming-asr-zh/capability.md:19 + status.json:5 still 'key 申请中'; 00_READ_ME_FIRST.md:53 candidate list lacks D-014 note; 07:160 footnote 'D-009–D-011' omits D-014",
+          "loom check: healthy=true, 0 errors (warnings: 4 provisional dossiers, 11 planned-not-delivered); git tree clean at 0f25724; digest 28c3e266… matches keeper prompt for attempt 3",
+          "Non-gap observation: .loom/design/system-architecture.md:53 initial-params list enumerates only Fish TTS mapping (Fish-specific params, not a selection claim); DECISIONS.md D-010 body retains 'key 申请中' as historical record under the file's own 'current truth lives in PROJECT.md' convention"
+        ],
+        "gaps": [
+          {
+            "gap": "Residual stale key-pending statement escaped the round-2 sweep: .loom/capabilities/streaming-asr-zh/capability.md:19 (Project scenario) still says 'key 申请中', mirrored verbatim in .loom/capabilities/streaming-asr-zh/status.json:5 — while F-028/F-031/F-033, PROJECT.md ('Fish 与 DashScope key 均已到位并实测通过'), and tech-stack.md:23 ('key 已到位并实测通过') all record the DashScope key present and tested end-to-end.",
+            "severity": "minor",
+            "why_it_blocks_start": "An Agent opening the streaming-asr-zh dossier for TASK-007's C1/C2/C3 hooks reads 'key 申请中' as the project scenario and may wrongly treat TASK-007 as still key-blocked or distrust the dossier's currency — the same contradictory-truth class round-2 gap 1(c) targeted, one instance unfixed.",
+            "evidence_to_close": "streaming-asr-zh/capability.md scenario line updated to reflect the key is in place and verified (or the key clause removed), and status.json's scenario string synced."
+          },
+          {
+            "gap": "Residual pre-D-014 framing outside the swept spots: (i) state.json assumption A-005 remains 'active' asserting '若管线实测仍 >300ms 则触发切换到百炼 CosyVoice（赛马回退路径）' — the conditional-fallback framing removed from TASK-008's hooks persists in the assumption layer (round-2 evidence already flagged this line, fix did not touch it); (ii) 00_READ_ME_FIRST.md:53 '第一阶段 TTS 候选：Fish Audio、MiniMax、ElevenLabs；CosyVoice 作为后续自部署候选' carries no D-014 update annotation while 04 §7 / 06 §8 / 07 all received one, so the entry-point doc still asserts a first-round candidate set missing 百炼; (iii) 07_DECISIONS_AND_OPEN_QUESTIONS.md:160 footnote '详见 .loom/DECISIONS.md D-009–D-011' omits D-014, the decision that now carries the TTS confirmation (D-009 is superseded).",
+            "severity": "minor",
+            "why_it_blocks_start": "Each leftover forces a fresh Agent to reconcile which source is current: the state file presents an obsolete contingency as an active assumption, the entry-point doc lists the wrong first-round TTS set, and the decision-pointer range stops short of the superseding decision. None blocks TASK-001, but they are the exact drift class this revision round was meant to sweep.",
+            "evidence_to_close": "A-005 retired/superseded or reworded to the D-014 dual-adapter truth; 00_READ_ME_FIRST.md's TTS candidate line annotated with D-014 or corrected; the 07 footnote range extended to include D-014 (e.g. 'D-009–D-014' or an explicit decision list)."
+          }
+        ],
+        "review": {
+          "mode": "independent",
+          "reviewer_id": "keeper-subagent-devin-r3",
+          "evidence": "Host spawned a fresh Devin subagent with no access to the shaping conversation; review performed solely from workspace files and the LOOM CLI (loom keeper prompt, loom context --keeper, loom check, file inspection, git log)."
+        },
+        "can_auto_pass": false,
+        "at": "2026-09-21T16:18:01.362Z",
+        "closure_results": [
+          {
+            "gap": "D-014 (first-round dual TTS adapter race: Fish s2.1-pro-free vs Bailian cosyvoice-v3-flash, loser kept as fallback) is recorded in DECISIONS.md and supersedes D-009, but the work map gives it no owner: TASK-008 title/outcome/acceptance/verify_by cover only Fish ('Fish Audio TTS adapter', fish_demo, cancel test) and its low-latency-pipeline#C1 hook still frames Bailian as a conditional fallback ('若持续 >300ms 则记录并建议触发百炼 CosyVoice 回退') — the pre-D-014 framing; no task builds the second adapter and no acceptance criterion produces the in-pipeline hot-TTFA/中文自然度 comparison D-014 requires. Echo: chinese-tts-eval capability.md scenario was updated to the dual race, but every decision-tree node is still Fish-specific (C1 entry '设计 TTSProvider 的 Fish 实现', C2 'Fish 服务端...', C5 output 'emotion → Fish 参数映射表') — no Bailian-side node exists despite research/bailian-cosyvoice-streaming.md now providing the source material (WS continue-task/finish-task, Instruct emotion overhead, voice selection).",
+            "evidence": "CLOSED. .loom/tasks.json TASK-008 retitled 'TTS 双 adapter：Fish Audio + 百炼 CosyVoice 接入与管线内赛马'; outcome names s2.1-pro-free and cosyvoice-v3-flash; acceptance carries (a) Fish adapter fish_demo + cancel assertion, (b) 百炼 adapter bailian_demo with continue-task 增量文本 + finish-task 收尾 + cancel assertion, (c) '同一测句集在真实管线内对两家各跑 ≥10 轮，输出热 TTFA（WS 常驻连接）对比表；胜出者写入决策记录' verified via data/ benchmark file + loom decision. capability_hooks now: chinese-tts-eval C1 '两家均 WS 流式接入', C2 'Fish 语义边界 flush；百炼 continue-task 分句语义对齐', C3 dual cancel assertions, low-latency-pipeline C1 '两家热 TTFA 对比表，供 D-014 赛马裁决' — grep confirms no '>300ms'/'回退' framing anywhere in tasks.json. chinese-tts-eval/capability.md: scenario is the dual race; C1 entry covers 'Fish / 百炼 CosyVoice' and option B cites 百炼 continue-task; C2 decide_by covers 百炼 continue-task/finish-task; C5 covers 百炼 v3 Instruct 情感通道 with output 'emotion → 各家映射表（百炼：Instruct 情感值；Fish：prompt 措辞降级）'; C1/C2/C5 all source bailian-cosyvoice-streaming.md."
+          },
+          {
+            "gap": "Post-fix drift: the annotations added to close round-1 gap 2 are already stale, and new facts are unpropagated. (a) '第一轮仅 Fish' annotations now contradict D-014: tech-stack.md:25 TTS row still cites D-009 'Fish Audio 单一 provider...CosyVoice 后续自部署'; 04 §7 note (line 134), 06 §8 note (lines 263-264), 07:101 note and 07:155, .loom/design/mvp-evaluation.md:41, and DLV-009's parenthetical 'TTS 第一轮仅 Fish' all assert single-Fish. (b) PROJECT.md:46 still says decisions are D-001–D-011 while DECISIONS.md runs to D-014. (c) Key status stale: F-026/F-028/F-031 record Fish and DashScope keys present and the Bailian three-layer link tested, yet PROJECT.md:32 ('DashScope key 申请中'), PROJECT.md:70 ('007（ASR，blocked on key）'), tech-stack.md:23 ('key 申请中'), 07:153 ('key 申请中'), and confirmed fact F-020 ('DashScope key 尚未到位') still assert pending; F-018 ('TTS 第一轮只用 Fish Audio') remains a confirmed fact superseded by D-014.",
+            "evidence": "CLOSED for every enumerated spot (one residual instance carried into new gap 1). (a) tech-stack.md:25 TTS row now 'Fish s2.1-pro-free（免费层）+ 百炼 cosyvoice-v3-flash 双 adapter 赛马（D-014 取代 D-009）'; 04 §7 note lines 134-136 cite D-014 dual-adapter; 06 §8 lines 263-264 amended to '第一轮 Fish + 百炼双 adapter 赛马…见 D-014'; 07:100-101 update banner cites D-014; 07:156 '双 key 就位，双 adapter 赛马'; .loom/design/mvp-evaluation.md:41 carries the D-014 note and :32 'TTS 赛马并入 TASK-008'; DLV-009 retitled '赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）'. (b) PROJECT.md now states decisions run D-001–D-014. (c) PROJECT.md boundaries 'Fish 与 DashScope key 均已到位并实测通过' plus Clash-proxy note (127.0.0.1:55483, +~1.9s TLS, DIRECT/trust_env=False) added; work map reads '007（ASR，key 已到位）、008（TTS 双 adapter 赛马，key 已到位）'; tech-stack.md:23 'key 已到位并实测通过'; 07:154 'key 已到位，实测通过'; state.json F-018 explicitly superseded by F-034 ('已被 D-014 取代'), F-020 superseded by F-033 (key 到位). Residual: streaming-asr-zh capability scenario still says 'key 申请中' — see new gap 1."
+          },
+          {
+            "gap": "Two housekeeping items explicitly named in round-1 gap 2's evidence_to_close remain unfixed: assumption A-001 still has status 'active' ('仓库将托管到 GitHub 私有仓库…待确认') although F-015 confirmed the GitHub private repo Haaaiawd/paimon-voice-poc with main tracking origin/main; Q-006 is marked resolved but its resolution string is empty.",
+            "evidence": "CLOSED. .loom/state.json understanding.assumptions: A-001 now has status 'retired' (repo-hosting assumption discharged by F-015). unresolved: Q-006 status 'resolved' with non-empty resolution 'GitHub 私有仓库 Haaaiawd/paimon-voice-poc，main 分支已推送同步' and resolved_at 2026-09-21T15:57:15.289Z."
+          }
+        ]
       }
     ],
-    "prepared_digest": "28c3e266c5a0ec9d7b4290b3a56cf23a023e53860c78ccbec9fa7f24ad4871e1",
-    "prepared_attempt": 3
+    "prepared_digest": "8ad7cb30c1357e4d44890e8e01631367b9359231e2366f14e8e99a3534fa4f22",
+    "prepared_attempt": 4
   },
   "decision_ids": [
     "D-001",

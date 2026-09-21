@@ -50,7 +50,7 @@
 - Turn Detection：Silero VAD + Pipecat Smart Turn。
 - LLM：Provider 抽象，优先接 OpenAI-compatible API，按 TTFT 赛马。
 - TTS：Provider 抽象，优先选择“低首包延迟 + 中文自然度 + 情绪表现”。
-- 第一阶段 TTS 候选：Fish Audio、MiniMax、ElevenLabs；CosyVoice 作为后续自部署候选。
+- 第一阶段 TTS：Fish（s2.1-pro-free 免费层）+ 百炼 cosyvoice-v3-flash 双 adapter 赛马（2026-09-21 更新，D-014）；MiniMax、ElevenLabs 与 CosyVoice 自部署为备选。
 - 第一阶段不为“纯开源”牺牲体验；核心逻辑必须由我们自己掌握。
 - 项目的核心代码不是 ASR/TTS/LLM adapter，而是 Conversation Core。
 

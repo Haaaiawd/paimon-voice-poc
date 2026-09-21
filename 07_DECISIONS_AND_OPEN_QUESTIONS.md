@@ -157,7 +157,7 @@ Fish / MiniMax / ElevenLabs 至少测两个。
 4. 开发机系统（Windows/macOS/Linux）；✅ Windows 原生（不走 WSL）
 5. Python 版本/是否允许 Docker。✅ Python 3.12 + Docker 用于依赖打包
 
-（2026-09-21 全部确认，详见 .loom/DECISIONS.md D-009–D-011）
+（2026-09-21 全部确认，详见 .loom/DECISIONS.md D-009–D-014）
 
 ## 后续阶段
 
