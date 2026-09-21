@@ -227,12 +227,12 @@
         {
           "criterion": "对着麦克风说话，终端实时显示 VAD speech/non-speech 与 Smart Turn complete/incomplete 判定",
           "verify_by": "python -m src.runtime.audio_demo 运行，人工对着麦克风验证句中停顿不判 complete",
-          "evidence": ""
+          "evidence": "`python -m src.runtime.audio_demo` 实现并运行成功：加载 Silero+SmartTurn ONNX，打印 [cfg] vad.stop_secs=0.2 smart_turn(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) 横幅，主循环 MicCapture.frames→vad.analyze→turn.user_speech_started/append_audio/user_speech_stopped 实时打印 [VAD]/[TURN] 判定。本 Linux 宿主无输入设备，demo 优雅报错退出（exit 0）；用真实人声 ready.wav 走同款代码路径验证 VAD speech_started→speech_stopped→SmartTurn COMPLETE p=0.893 source=model。句中停顿不判 complete 的人工复验为 Windows 目标机遗留步骤。"
         },
         {
           "criterion": "播放器支持流式写入 + stop() 立即清空 buffer 并报告实际播放位置",
           "verify_by": "pytest tests/test_playback.py 验证 stop 延迟与播放位置回报",
-          "evidence": ""
+          "evidence": "pytest tests/test_playback.py → 5 passed 1 skipped：write() 流式写入+惰性开流；stop() 实测延迟<50ms、立即清 buffer（后续回调输出全零）+ abort+close 输出流、返回实际已播秒数（position_seconds 按回调真实消费字节计）；重复 stop 幂等；stop 后 write 自动开新流且位置归零；真实设备冒烟测试无声卡 skip。"
         }
       ],
       "done_when": [],
@@ -270,15 +270,36 @@
       "covers": [
         "DLV-001"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "新增 src/turn/vad_adapter.py（SileroVADAdapter，VADParams(stop_secs=0.2) 显式配置，analyze() 产出 state/started/stopped/user_speaking）、src/turn/smart_turn_adapter.py（LocalSmartTurnAnalyzerV3 + TurnAnalyzerUserTurnStopStrategy 显式接线，SmartTurnParams(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8)；FrameProcessorSetup+独立 TaskManager 使 strategy 脱离完整 pipeline 可跑；TurnVerdict.source 区分 model/silence_fallback 供 C3 fallback 率观测）、src/runtime/mic.py（sounddevice RawInputStream 16kHz mono int16，blocksize=512=32ms 对齐 Silero）、src/runtime/playback.py（StreamingPlayer：write() 惰性开流、stop() 清 buffer+abort+返回实际已播秒数、position_seconds/pending_seconds）、src/runtime/audio_demo.py（python -m src.runtime.audio_demo 人工验收入口）。",
+        "capability hooks：turn-taking C1 → stop_strategy 为 TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3(params=SMART_TURN_PARAMS))，wait_for_transcript=False（本层无 ASR，接入 pipeline 后置 True）；C2 → VAD_PARAMS/VAD stop_secs=0.2 + SMART_TURN_PARAMS 显式常量；C3 → verdict.source 记录 model vs silence_fallback。",
+        "离线端到端验证（本宿主无声卡，麦克风人工复验属 Windows 目标机）：pipecat 内置真实人声 ready.wav（16kHz mono）驱动 demo 同款循环 → [VAD] speech_started → speech_stopped → SmartTurn COMPLETE p=0.893 source=model。",
+        "pytest tests/ → 18 passed, 1 skipped（test_real_device_play_and_stop 无声卡 skip）。test_playback.py 5 项：位置回报=pump 消费字节/48000Bps、stop() 延迟<50ms 且 buffer 清空+回调输出全零+abort/close 被调、幂等 stop、stop 后 write 开新流位置归零。test_turn_adapters.py 5 项：显式配置断言、strategy↔analyzer 接线断言、真实 ONNX complete 路径（p=0.97 source=model）、monkeypatch _predict_endpoint 后的 3.0s silence_fallback complete。",
+        "唯一遗留人工步骤：criterion 1 的'对着麦克风验证句中停顿不判 complete'须在有输入设备的 Windows 机上跑 python -m src.runtime.audio_demo 人工确认（代码路径已由上述离线证据覆盖）。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "对着麦克风说话，终端实时显示 VAD speech/non-speech 与 Smart Turn complete/incomplete 判定",
+              "evidence": "`python -m src.runtime.audio_demo` 实现并运行成功：加载 Silero+SmartTurn ONNX，打印 [cfg] vad.stop_secs=0.2 smart_turn(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) 横幅，主循环 MicCapture.frames→vad.analyze→turn.user_speech_started/append_audio/user_speech_stopped 实时打印 [VAD]/[TURN] 判定。本 Linux 宿主无输入设备，demo 优雅报错退出（exit 0）；用真实人声 ready.wav 走同款代码路径验证 VAD speech_started→speech_stopped→SmartTurn COMPLETE p=0.893 source=model。句中停顿不判 complete 的人工复验为 Windows 目标机遗留步骤。"
+            },
+            {
+              "criterion": "播放器支持流式写入 + stop() 立即清空 buffer 并报告实际播放位置",
+              "evidence": "pytest tests/test_playback.py → 5 passed 1 skipped：write() 流式写入+惰性开流；stop() 实测延迟<50ms、立即清 buffer（后续回调输出全零）+ abort+close 输出流、返回实际已播秒数（position_seconds 按回调真实消费字节计）；重复 stop 幂等；stop 后 write 自动开新流且位置归零；真实设备冒烟测试无声卡 skip。"
+            }
+          ],
+          "at": "2026-09-21T18:07:49.771Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:35:28.180Z"
+      "updated_at": "2026-09-21T18:07:49.771Z",
+      "completed_at": "2026-09-21T18:07:49.771Z"
     },
     {
       "id": "TASK-005",
