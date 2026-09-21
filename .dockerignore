@@ -1,0 +1,10 @@
+.git
+.loom
+reference/
+data/
+.env
+*.pcm
+__pycache__/
+*.pyc
+.venv/
+tests/

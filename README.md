@@ -20,3 +20,16 @@
 - 直播
 
 文档版本：2026-09-21
+
+## 开发环境
+
+```bash
+git submodule update --init --depth 1   # 拉 reference/ 参考源码
+pip install -e ".[dev]"                 # Python >=3.12，Windows 原生
+cp .env.example .env                    # 填入 API keys
+```
+
+`.env` 不入库；换机器时手动拷贝。本机有代理的话记得给 `*.aliyuncs.com` /
+`api.fish.audio` 配 DIRECT 规则（详见 `.env.example` 尾部注释）。
+
+项目状态与任务图见 `.loom/`（loom CLI）。

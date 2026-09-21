@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paimon-voice-poc"
+version = "0.1.0"
+description = "PC-local real-time Chinese voice companion (Paimon) — PoC"
+requires-python = ">=3.12"
+dependencies = [
+    # 实时语音 pipeline 底盘；onnxruntime/openai/websockets/dotenv 已内置
+    # （silero extra 为空，VAD 与 Smart Turn v3.2 ONNX 权重随包内置）
+    "pipecat-ai>=1.10,<2",
+    # 本地音频 I/O：Windows 官方 wheel 自带 PortAudio，替代 pipecat local transport(pyaudio)
+    "sounddevice>=0.5",
+    "numpy>=1.26",
+    # 供应商协议层：Fish(msgpack+ws) / 百炼(dashscope) / OpenAI-compatible(httpx)
+    "httpx>=0.27",
+    "websockets>=13",
+    "msgpack>=1.0",
+    "dashscope>=1.24",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
