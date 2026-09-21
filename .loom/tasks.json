@@ -209,15 +209,32 @@
       "covers": [
         "DLV-009"
       ],
-      "status": "open",
+      "status": "blocked",
       "progress": {
-        "completed": [],
-        "current": "",
-        "next": ""
+        "completed": [
+          "scripts/bench_llm.py 实现完成：DeepSeek(api.deepseek.com/v1, deepseek-chat) + 通义千问(dashscope compatible-mode, qwen-turbo) 两家 OpenAI-compatible endpoint，key/model 走 DEEPSEEK_API_KEY/DASHSCOPE_API_KEY + *_MODEL 覆盖",
+          "每 endpoint warmup + ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object → parse_agent_reply 线上口径），输出 TTFT/total mean/p50/p95 与结构化成功率对比表",
+          "tests/test_bench_llm.py 6 passed：MISSING_KEY 跳过、分位数数学、MockTransport 全链路测量、零 key blocked、半 key 部分运行",
+          "实跑 .venv/bin/python scripts/bench_llm.py → exit 2，两家均 MISSING_KEY，结果落盘 data/llm_benchmark/{bench_20260921T183917Z.json,latest.json,latest.md}"
+        ],
+        "current": "blocked: 零可用 API key：.env 中 DASHSCOPE_API_KEY=/FISH_API_KEY= 为空且未含 DEEPSEEK_API_KEY 行，进程环境亦无此两变量；按任务边界'零 key 时停止并报告 blocked'，实测环节阻塞。",
+        "next": ".env 填入 DASHSCOPE_API_KEY 或 DEEPSEEK_API_KEY 任一（或导出同名环境变量）后运行 .venv/bin/python scripts/bench_llm.py，即可产出 ≥20 次 TTFT mean/p50/p95 + 结构化成功率实测对比表"
       },
-      "evidence": [],
+      "evidence": [
+        "scripts/bench_llm.py 已实现并经 tests/test_bench_llm.py 验证（6 passed）：MISSING_KEY 优雅跳过、分位数统计、MockTransport 全链路、零 key blocked、半 key 部分运行均覆盖",
+        "2026-09-21T18:39Z 实跑 .venv/bin/python scripts/bench_llm.py → exit 2，deepseek/qwen 两行均 MISSING_KEY，status=blocked",
+        "结果已落盘 data/llm_benchmark/bench_20260921T183917Z.json + latest.json + latest.md（对比表含 MISSING_KEY 标注）",
+        "pytest tests/ 全量 24 passed, 1 skipped，无回归"
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:54:26.146Z"
+      "updated_at": "2026-09-21T18:39:50.311Z",
+      "block": {
+        "reason": "零可用 API key：.env 中 DASHSCOPE_API_KEY=/FISH_API_KEY= 为空且未含 DEEPSEEK_API_KEY 行，进程环境亦无此两变量；按任务边界'零 key 时停止并报告 blocked'，实测环节阻塞。",
+        "recovery_conditions": [
+          ".env 填入 DASHSCOPE_API_KEY 或 DEEPSEEK_API_KEY 任一（或导出同名环境变量）后运行 .venv/bin/python scripts/bench_llm.py，即可产出 ≥20 次 TTFT mean/p50/p95 + 结构化成功率实测对比表"
+        ],
+        "at": "2026-09-21T18:39:50.311Z"
+      }
     },
     {
       "id": "TASK-004",
@@ -309,12 +326,12 @@
         {
           "criterion": "事件总线定义 doc 03 §4 全部事件类型；状态机迁移覆盖 doc 02 §3 典型路径",
           "verify_by": "pytest tests/test_state_machine.py 覆盖全部状态迁移",
-          "evidence": ""
+          "evidence": "pytest tests/test_state_machine.py 39项：DOC03_EVENT_TYPES 断言15个规范事件全在 EventType；迁移表12行全参数化覆盖+典型路径 IDLE→LISTENING→POSSIBLE_END→THINKING→SPEAKING→INTERRUPTED→LISTENING 经 STATE_CHANGED 序列断言；SILENCED 全局进入/超时退出/wake/duration_s 覆盖均验证；非法迁移与数据面事件忽略路径覆盖"
         },
         {
           "criterion": "TurnManager 消费 VAD+SmartTurn+ASR partial 事件，输出 USER_TURN_STARTED/CONTINUES/COMPLETE/AGENT_CAN_RESPOND",
           "verify_by": "pytest tests/test_turn_manager.py 用录制事件序列驱动断言",
-          "evidence": ""
+          "evidence": "pytest tests/test_turn_manager.py 11项：录制事件序列驱动干净轮次/停顿续说(turn_incomplete→CONTINUES+speech_resumed)/barge_in=True/SILENCED门控(发USER_TURN_COMPLETE不发AGENT_CAN_RESPOND)/陈旧complete忽略/ASR兜底开轮次/turn_id递增。turn-taking C1 验收点：VAD stop 单独永不完成轮次，完成只认 TURN_COMPLETE"
         }
       ],
       "done_when": [],
@@ -346,15 +363,36 @@
       "covers": [
         "DLV-002"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
-        "completed": [],
-        "current": "",
+        "completed": [
+          "events.py + state_machine.py + turn_manager.py + core.py 实现",
+          "tests/test_state_machine.py + tests/test_turn_manager.py 编写"
+        ],
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pytest tests/test_state_machine.py tests/test_turn_manager.py → 49 passed, 1 skipped (0.08s)；全套 tests/ → 73 passed, 2 skipped，无回归",
+        "src/conversation/ 新增：events.py（EventType 覆盖 doc03§4 全部15事件 + §2.1 四输出 + 扩展 TURN_INCOMPLETE/STATE_CHANGED；EventBus 同步派发+history+通配订阅）、state_machine.py（7状态迁移表+SILENCED可配置窗口+duration_s覆盖+tick/wake退出）、turn_manager.py（消费 VAD/SmartTurn/ASR 事件裁决轮次）、core.py（ConversationCore 组装点）",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "事件总线定义 doc 03 §4 全部事件类型；状态机迁移覆盖 doc 02 §3 典型路径",
+              "evidence": "pytest tests/test_state_machine.py 39项：DOC03_EVENT_TYPES 断言15个规范事件全在 EventType；迁移表12行全参数化覆盖+典型路径 IDLE→LISTENING→POSSIBLE_END→THINKING→SPEAKING→INTERRUPTED→LISTENING 经 STATE_CHANGED 序列断言；SILENCED 全局进入/超时退出/wake/duration_s 覆盖均验证；非法迁移与数据面事件忽略路径覆盖"
+            },
+            {
+              "criterion": "TurnManager 消费 VAD+SmartTurn+ASR partial 事件，输出 USER_TURN_STARTED/CONTINUES/COMPLETE/AGENT_CAN_RESPOND",
+              "evidence": "pytest tests/test_turn_manager.py 11项：录制事件序列驱动干净轮次/停顿续说(turn_incomplete→CONTINUES+speech_resumed)/barge_in=True/SILENCED门控(发USER_TURN_COMPLETE不发AGENT_CAN_RESPOND)/陈旧complete忽略/ASR兜底开轮次/turn_id递增。turn-taking C1 验收点：VAD stop 单独永不完成轮次，完成只认 TURN_COMPLETE"
+            }
+          ],
+          "at": "2026-09-21T21:13:13.186Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:07.315Z"
+      "updated_at": "2026-09-21T21:13:13.186Z",
+      "completed_at": "2026-09-21T21:13:13.186Z"
     },
     {
       "id": "TASK-006",
