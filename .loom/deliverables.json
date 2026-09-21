@@ -98,7 +98,7 @@
     {
       "id": "DLV-009",
       "slug": "provider-benchmarks",
-      "title": "赛马脚本：LLM TTFT benchmark（TTS 第一轮仅 Fish，其实测并入 TASK-008 验收）",
+      "title": "赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）",
       "kind": "verification",
       "notes": "",
       "covered_by": [

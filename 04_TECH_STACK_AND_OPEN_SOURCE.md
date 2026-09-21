@@ -131,8 +131,9 @@ SenseVoice：
 
 第一阶段做 Provider 赛马，不锁死。
 
-> 更新（2026-09-21，D-009）：第一轮只用 Fish Audio 打通闭环，赛马推迟到
-> 体验不达标时。下方各家仍作为备选参考保留。
+> 更新（2026-09-21，D-014）：第一轮 Fish（s2.1-pro-free 免费层）+ 百炼
+> cosyvoice-v3-flash 双 adapter 接入，管线内实测赛马定主力。下方各家仍作为
+> 备选参考保留。
 
 ### Fish Audio
 

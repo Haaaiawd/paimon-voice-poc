@@ -20,9 +20,9 @@ conversation/ + character/ + runtime coordination + metrics。
 | Runtime | Python 3.12 + Pipecat（自定义逻辑走独立 processor/service，不改其源码） |
 | VAD | Silero VAD（只判 speech/non-speech） |
 | Turn Detection | Pipecat Smart Turn（不自训练） |
-| ASR | 阿里云百炼/通义听悟流式（DashScope；D-010 取代"暂不锁定"），key 申请中 |
+| ASR | 阿里云百炼/通义听悟流式（DashScope；D-010 取代"暂不锁定"），key 已到位并实测通过 |
 | LLM | OpenAI-compatible 抽象；赛马名单 DeepSeek + 通义千问，TTFT > TPS |
-| TTS | Fish Audio 单一 provider（D-009 取代原"至少两家赛马"）；CosyVoice 后续自部署 |
+| TTS | Fish s2.1-pro-free（免费层）+ 百炼 cosyvoice-v3-flash 双 adapter 赛马（D-014 取代 D-009）；CosyVoice 本地自部署留后续 |
 | Transport | 第一版本地，不写死；LiveKit 留给后续多端 |
 
 ## Data and state

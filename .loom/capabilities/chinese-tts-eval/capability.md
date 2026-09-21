@@ -27,15 +27,17 @@
 
 ### C1: 接入协议选择
 
-- entry_when: 设计 TTSProvider 的 Fish 实现
+- entry_when: 设计 TTSProvider 的各家实现（Fish / 百炼 CosyVoice）
 - options:
   - A: HTTP streaming（tts.stream）→ leads_to: 适合已有完整文本
-  - B: WebSocket（stream_websocket / v1/tts/live）→ leads_to: C2
+  - B: WebSocket（Fish stream_websocket / v1/tts/live；百炼 continue-task 增量文本）
+    → leads_to: C2
 - decide_by: 本项目文本来自 LLM token 流，句子未完成就要开口——只有 WS 模式匹配；
+  两家都提供 WS 双向流式，协议细节不同但语义同构（增量文本→音频流→收尾事件）；
   HTTP 留给"固定短句"（如 acknowledgment cue）
-- source: fish-audio-streaming.md
+- source: fish-audio-streaming.md, bailian-cosyvoice-streaming.md
 - counterexample: 全部回复都是预生成固定文本时 HTTP 更简单且 TTFA 更低
-- output: 主路 WebSocket；cue 类固定短语允许走 HTTP 捷径
+- output: 双 adapter 主路均为 WebSocket 常驻连接；cue 类固定短语允许走 HTTP 捷径
 
 ### C2: 文本推送与 flush 时机
 
@@ -43,12 +45,13 @@
 - options:
   - A: 逐 token 直推不 flush → leads_to: 服务端持续等上下文，TTFA 膨胀
   - B: 语义边界（句尾/轮次末）发 FlushEvent → leads_to: C3
-- decide_by: Fish 服务端为自然度缓冲文本；不 flush 它为攒上下文牺牲首包，
-  但过碎的 flush 又牺牲自然度
-- source: fish-audio-streaming.md
+- decide_by: Fish 服务端为自然度缓冲文本，需在语义边界发 FlushEvent；
+  百炼端用 continue-task 分句、finish-task 强制收尾——语义同构，
+  adapter 统一暴露"按语义边界推送文本块"的契约，各自映射到本家协议
+- source: fish-audio-streaming.md, bailian-cosyvoice-streaming.md
 - counterexample: 回复极短（单句）时 flush 时机无争议，直接 commit
-- output: Text Chunker 变薄：按标点/语义边界聚合，边界处发 flush；
-  latency 参数用 "balanced"（官方最低 TTFA 档）
+- output: Text Chunker 变薄：按标点/语义边界聚合；Fish 边界发 flush + latency=balanced，
+  百炼按 continue-task 分句节奏推送
 
 ### C3: 取消语义实测
 
@@ -81,10 +84,13 @@
   - A: 假设 provider 情绪参数直接可用 → leads_to: 标签被静默忽略的风险
   - B: 逐个标定 emotion → provider 参数映射；不支持时靠 prompt 让文本自带情绪
     → leads_to: 完成
-- decide_by: 各家情绪控制能力差异大，映射表要实测标定而非假设
-- source: tts-eval-methodology.md
+- decide_by: 各家情绪控制能力差异大，映射表要实测标定而非假设；百炼 v3 音色有
+  Instruct 通道（"你说话的情感是happy。" 文本指令），Fish 侧暂无等价物，
+  只能靠 prompt 措辞带情绪——这是赛马裁决的维度之一
+- source: tts-eval-methodology.md, bailian-cosyvoice-streaming.md
 - counterexample: 单层情绪（全程一个语气）产品不需要映射层
-- output: emotion → Fish 参数（model/语气控制项）映射表，缺失标签降级为 neutral
+- output: emotion → 各家映射表（百炼：Instruct 情感值；Fish：prompt 措辞降级），
+  缺失标签降级为 neutral
 
 ## Stance and rejected defaults
 

@@ -29,7 +29,7 @@ latency log 写 `data/`（gitignore）；主观评分 1–5 分七维度（`06` 
 ## Interfaces and dependencies
 
 LLM 赛马记录：TTFT / 结构化输出成功率 / 人格稳定 / 短回复 / 中文口语 / 成本。
-TTS 若补赛马：TTFA / 中文自然度 / 情绪 / 长短句 / 取消速度 / 稳定性。
+TTS 赛马并入 TASK-008（Fish vs 百炼）：TTFA / 中文自然度 / 情绪 / 长短句 / 取消速度 / 稳定性。
 
 ## Failure, safety, and recovery
 
@@ -38,7 +38,7 @@ TTS 若补赛马：TTFA / 中文自然度 / 情绪 / 长短句 / 取消速度 / 
 ## Implementation constraints
 
 MVP 完成定义（`06` §8）：连续 ≥10 分钟、句中停顿不抢话、可打断且历史正确、延迟可接受、
-人格明显、≥2 LLM + ≥2 TTS 可替换（注：TTS 第一轮仅 Fish，"可替换"指接口层面成立）、
+人格明显、≥2 LLM + ≥2 TTS 可替换（注：TTS 第一轮 Fish + 百炼双 adapter 赛马，见 D-014）、
 有基础 latency log。
 
 ## Verification strategy

@@ -29,7 +29,9 @@
 - 不要把任务扩成"通用语音 Agent 平台"。
 - 第一版默认不真正打断正在讲话的用户；开发用耳机规避 AEC。
 - 开发环境：Windows 原生 Python 3.12（音频闭环不走 WSL）；Docker 仅用于依赖打包。
-- API keys 入 `.env`，不进仓库；DashScope key 申请中（TASK-007 的前置）。
+- API keys 入 `.env`，不进仓库；Fish 与 DashScope key 均已到位并实测通过。
+- 本机 Clash 代理（127.0.0.1:55483）给每连接 +~1.9s TLS 开销；语音链路必须绕行
+  （Clash 规则 DIRECT 或代码层 trust_env=False），见 `.env.example`。
 
 ## Design document map
 
@@ -43,7 +45,7 @@
 | `.loom/design/mvp-evaluation.md` | `06_MVP_AND_EVALUATION.md` | MVP 闭环、指标、用例 A–G |
 
 根目录 `00_`–`07_*.md` 是规范文档本体（编号即阅读顺序）；`.loom/design/` 是决策面索引。
-`07` 的已决定项已进入 `DECISIONS.md`（D-001–D-011）。
+`07` 的已决定项已进入 `DECISIONS.md`（D-001–D-014）。
 
 ## Professional capability map
 
@@ -66,9 +68,9 @@
 ## Work map
 
 `.loom/tasks.json`：12 个 task 覆盖全部 11 个 deliverable。执行序：
-TASK-001（环境）→ 002（接口）/004（音频轮次）/005（Core）并行 → 003（赛马）、
-006（打断）、007（ASR，blocked on key）、008（TTS）、009（人格）→ 010（端到端+UI+metrics）
-→ 011（主动性）→ 012（MVP 验收）。
+TASK-001（环境）→ 002（接口）/004（音频轮次）/005（Core）并行 → 003（LLM 赛马，
+需任一 LLM key）、006（打断）、007（ASR，key 已到位）、008（TTS 双 adapter 赛马，
+key 已到位）、009（人格）→ 010（端到端+UI+metrics）→ 011（主动性）→ 012（MVP 验收）。
 
 ## Decision history
 

@@ -98,7 +98,8 @@ OpenAI-compatible
 ## 尚未决定
 
 > 更新（2026-09-21）：1–3 已拍板——ASR=阿里云百炼 paraformer-realtime-v2（D-010）、
-> LLM 赛马=DeepSeek + 通义千问、TTS=Fish Audio 单家（D-009）。保留原文备查。
+> LLM 赛马=DeepSeek + 通义千问、TTS=Fish + 百炼 CosyVoice 双 adapter 赛马（D-014）。
+> 保留原文备查。
 
 ### 1. 第一轮 ASR Provider
 
@@ -150,9 +151,9 @@ Fish / MiniMax / ElevenLabs 至少测两个。
 
 只需要确认：
 
-1. 可直接使用的 ASR API；✅ 阿里云百炼 paraformer-realtime-v2（key 申请中）
-2. 第一批 LLM endpoint；✅ DeepSeek + 通义千问（OpenAI-compatible）
-3. 第一批 TTS API Key；✅ Fish Audio（key 待用户提供）
+1. 可直接使用的 ASR API；✅ 阿里云百炼 paraformer-realtime-v2（key 已到位，实测通过）
+2. 第一批 LLM endpoint；✅ DeepSeek + 通义千问（DashScope key 已到位，qwen-flash TTFT ~250ms 实测）
+3. 第一批 TTS API Key；✅ Fish Audio + 百炼 CosyVoice（双 key 就位，双 adapter 赛马）
 4. 开发机系统（Windows/macOS/Linux）；✅ Windows 原生（不走 WSL）
 5. Python 版本/是否允许 Docker。✅ Python 3.12 + Docker 用于依赖打包
 

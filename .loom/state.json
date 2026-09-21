@@ -4,7 +4,7 @@
     "name": "paimon-voice-poc",
     "status": "ready_for_keeper",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T15:41:45.335Z"
+    "updated_at": "2026-09-21T15:57:16.347Z"
   },
   "understanding": {
     "confirmed": [
@@ -199,13 +199,25 @@
         "text": "Windows 控制台 GBK 编码会把 UTF-8 中文显示为乱码——测试脚本需 PYTHONIOENCODING=utf-8 或 stdout.reconfigure；Terminal UI 实现时同理。",
         "source": "conversation",
         "at": "2026-09-21T15:41:45.335Z"
+      },
+      {
+        "id": "F-033",
+        "text": "F-020/F-026 状态更新：DashScope key 已于 2026-09-21 到位（用户直接提供，账户余额 ~5 元），FISH key 已就位——TASK-007/008 的 key 阻塞全部解除；TASK-003 仅需任一 LLM key（DashScope 已可满足）。",
+        "source": "conversation",
+        "at": "2026-09-21T15:57:15.289Z"
+      },
+      {
+        "id": "F-034",
+        "text": "F-018（第一轮只用 Fish）已被 D-014 取代：TTS 为 Fish + 百炼 cosyvoice-v3-flash 双 adapter 赛马。",
+        "source": "conversation",
+        "at": "2026-09-21T15:57:15.289Z"
       }
     ],
     "assumptions": [
       {
         "id": "A-001",
         "text": "仓库将托管到 GitHub 私有仓库用于云端同步（待确认平台与可见性）。",
-        "status": "active",
+        "status": "retired",
         "source": "agent",
         "at": "2026-09-21T12:48:55.124Z"
       },
@@ -288,8 +300,8 @@
         "impact": "medium",
         "status": "resolved",
         "at": "2026-09-21T12:48:55.125Z",
-        "resolution": "",
-        "resolved_at": "2026-09-21T12:57:41.848Z"
+        "resolution": "GitHub 私有仓库 Haaaiawd/paimon-voice-poc，main 分支已推送同步",
+        "resolved_at": "2026-09-21T15:57:15.289Z"
       }
     ]
   },
@@ -372,10 +384,92 @@
         "can_auto_pass": false,
         "at": "2026-09-21T13:48:42.260Z",
         "closure_results": []
+      },
+      {
+        "run_id": "keeper-subagent-devin-2026-09-21-r2",
+        "prepared_digest": "12f21fee1f82e8de08e95c970f574355ec3e397920e514d1469ce251185e352b",
+        "verdict": "needs_revision",
+        "summary": "Round-1 fixes verified: 7 of 8 gaps genuinely closed (TASK-003 acceptance rewritten with MISSING_KEY semantics and the misfired chinese-tts-eval#C4 hook removed; turn-taking#C6 now owned by TASK-010 hook+acceptance; depends_on edges 007/008->004 and 011->010 added; SILENCED producer specified via D-013 + conversation-core.md section + TASK-011 criterion; smart-turn-zh-benchmark.md created and cited by C3 with F-021 recorded; Pipecat-vs-Core boundary written via D-012 + conversation-core.md section; DLV-009 no longer promises a TTS comparison). However the post-fix changes introduced fresh drift of the same class: D-014 (dual TTS adapter race, supersedes D-009) is recorded but has no work-map owner for the Bailian cosyvoice-v3-flash adapter or the in-pipeline comparison, and all 'first-round Fish only' annotations written for the D-009 fix are now stale; newly-arrived keys (F-026/F-028/F-031) are not reflected in PROJECT.md/tech-stack.md/07 which still say 'key 申请中/blocked'; and two housekeeping items named in gap-2's evidence_to_close (A-001, Q-006) remain unfixed. All gaps are minor; TASK-001 remains executable.",
+        "evidence": [
+          ".loom/tasks.json TASK-003 (lines 125-141): rewritten per-configured-provider criterion + MISSING_KEY criterion + '零 key 时任务保持 blocked' boundary; chinese-tts-eval#C4 hook gone",
+          ".loom/tasks.json TASK-007 deps [002,004] (368-371), TASK-008 deps [002,004] (435-438) + s2.1-pro-free free-tier boundary (433), TASK-010 turn-taking#C6 hook (591-594) + speculation acceptance (550-554), TASK-011 deps [005,009,010] (638-642) + rule-classifier SILENCED criterion (624)",
+          ".loom/deliverables.json:101 DLV-009 title narrowed to LLM benchmark; parenthetical 'TTS 第一轮仅 Fish' now stale under D-014",
+          ".loom/DECISIONS.md: D-012 (Pipecat/Core boundary), D-013 (SILENCED producer), D-014 (dual TTS adapter race, Supersedes: D-009) all recorded; decision_ids in state.json run D-001..D-014",
+          ".loom/design/conversation-core.md lines 50-72: 'Pipecat 原语 vs 自研 Core 的权责边界（防双路径）' + 'SILENCED 的生产者与退出' sections present",
+          ".loom/capabilities/turn-taking/research/smart-turn-zh-benchmark.md exists (85.79%/FNR 9.26%, 23语言倒数第三, fallback observability + contingencies); capability.md C3 lines 61-65 cite it; failure-signal line 116 records the >10% fallback signature",
+          ".loom/capabilities/chinese-tts-eval/capability.md:19 scenario updated to dual-adapter race; research/bailian-cosyvoice-streaming.md added (WS continue-task/finish-task, 626-796ms实测, v3.5 418, Instruct emotion); but tree nodes C1/C2/C5 remain Fish-specific",
+          "Drift evidence: .loom/design/tech-stack.md:25 cites D-009 single-Fish where D-014 is current; tech-stack.md:23 'key 申请中' stale vs F-028; PROJECT.md:32 'DashScope key 申请中' and :70 'blocked on key' stale vs F-026/F-028/F-031; PROJECT.md:46 'D-001–D-011' stale vs D-014; 04:134/06:263/07:101,155/mvp-evaluation.md:41 all assert first-round single-Fish",
+          ".loom/state.json: F-018 'TTS 第一轮只用 Fish Audio' superseded by D-014 but still confirmed; F-020 'DashScope key 尚未到位' contradicted by F-028 (key tested working); A-001 status 'active' though F-015 confirms repo; Q-006 resolved with empty resolution; A-005 fallback framing predates D-014 parallel-race framing",
+          ".env.example documents s2.1-pro-free constraint, cosyvoice-v3.5 418, and Clash proxy bypass (consistent with F-024/F-029/F-030); .gitignore ignores .env + .env.* with !.env.example and data/; git check-ignore confirms .env ignored and git ls-files shows only .env.example tracked — .env (with real keys) is not in the repo",
+          "TASK-008 covers only Fish: title/outcome/acceptance/verify_by=fish_demo; grep for cosyvoice/百炼 across tasks.json+deliverables.json finds only the fallback hook at line 467 — no owner for the second adapter or the race comparison",
+          "loom check: healthy=true, 0 errors; warnings only for 4 provisional dossiers + 11 not-done deliverables; graph acyclic, TASK-001 executable; minor nit (not a gap): TASK-001 criterion names UPPERCASE key placeholders while .env.example uses lowercase names — same three keys present",
+          "git status: only .loom/state.json modified (loom bookkeeping); 7 reference submodules committed per .gitmodules; frozen tree consistent"
+        ],
+        "gaps": [
+          {
+            "gap": "D-014 (first-round dual TTS adapter race: Fish s2.1-pro-free vs Bailian cosyvoice-v3-flash, loser kept as fallback) is recorded in DECISIONS.md and supersedes D-009, but the work map gives it no owner: TASK-008 title/outcome/acceptance/verify_by cover only Fish ('Fish Audio TTS adapter', fish_demo, cancel test) and its low-latency-pipeline#C1 hook still frames Bailian as a conditional fallback ('若持续 >300ms 则记录并建议触发百炼 CosyVoice 回退') — the pre-D-014 framing; no task builds the second adapter and no acceptance criterion produces the in-pipeline hot-TTFA/中文自然度 comparison D-014 requires. Echo: chinese-tts-eval capability.md scenario was updated to the dual race, but every decision-tree node is still Fish-specific (C1 entry '设计 TTSProvider 的 Fish 实现', C2 'Fish 服务端...', C5 output 'emotion → Fish 参数映射表') — no Bailian-side node exists despite research/bailian-cosyvoice-streaming.md now providing the source material (WS continue-task/finish-task, Instruct emotion overhead, voice selection).",
+            "severity": "minor",
+            "why_it_blocks_start": "An Agent executing TASK-008 as written delivers only the Fish adapter; D-014's promised two-adapter race never happens and nobody is told to build cosyvoice-v3-flash — or a diligent Agent reading DECISIONS.md builds a second adapter that no acceptance criterion covers, and the race verdict ('定主力') has no recorded owner. Same unowned-decision class as the round-1 turn-taking#C6 gap.",
+            "evidence_to_close": "TASK-008 (or a new task) names both adapters in outcome/acceptance — e.g. a cosyvoice adapter demo plus a side-by-side TTFA/自然度 record under scripts/ or data/ — and its hooks stop framing Bailian as fallback-only; OR D-014 is amended to explicitly scope round 1 to Fish with the Bailian adapter deferred to a named later task. Optionally add Bailian decision node(s) to chinese-tts-eval citing bailian-cosyvoice-streaming.md."
+          },
+          {
+            "gap": "Post-fix drift: the annotations added to close round-1 gap 2 are already stale, and new facts are unpropagated. (a) '第一轮仅 Fish' annotations now contradict D-014: tech-stack.md:25 TTS row still cites D-009 'Fish Audio 单一 provider...CosyVoice 后续自部署'; 04 §7 note (line 134), 06 §8 note (lines 263-264), 07:101 note and 07:155, .loom/design/mvp-evaluation.md:41, and DLV-009's parenthetical 'TTS 第一轮仅 Fish' all assert single-Fish. (b) PROJECT.md:46 still says decisions are D-001–D-011 while DECISIONS.md runs to D-014. (c) Key status stale: F-026/F-028/F-031 record Fish and DashScope keys present and the Bailian three-layer link tested, yet PROJECT.md:32 ('DashScope key 申请中'), PROJECT.md:70 ('007（ASR，blocked on key）'), tech-stack.md:23 ('key 申请中'), 07:153 ('key 申请中'), and confirmed fact F-020 ('DashScope key 尚未到位') still assert pending; F-018 ('TTS 第一轮只用 Fish Audio') remains a confirmed fact superseded by D-014.",
+            "severity": "minor",
+            "why_it_blocks_start": "A fresh Agent reading PROJECT.md concludes TASK-007 is key-blocked and TTS is single-vendor, then finds the opposite in DECISIONS.md/state.json — it must guess which is current truth, and the decision-ID trail for TTS (D-009 cited where D-014 is current) misleads rationale tracing, the exact failure round-1 gap 2 targeted.",
+            "evidence_to_close": "TTS references updated to D-014 dual-adapter truth (or annotated as superseded notes); PROJECT.md decision range corrected to include D-014; key-pending statements updated to reflect keys present per F-026/F-028 (TASK-007 boundary may stay conditional); F-018/F-020 marked superseded or corrected in state.json."
+          },
+          {
+            "gap": "Two housekeeping items explicitly named in round-1 gap 2's evidence_to_close remain unfixed: assumption A-001 still has status 'active' ('仓库将托管到 GitHub 私有仓库…待确认') although F-015 confirmed the GitHub private repo Haaaiawd/paimon-voice-poc with main tracking origin/main; Q-006 is marked resolved but its resolution string is empty.",
+            "severity": "minor",
+            "why_it_blocks_start": "Low material impact, but the active assumption and empty resolution make the state file lie about what is confirmed — a fresh Agent cannot tell whether hosting is still undecided, and the prior round's requested closure condition is objectively unmet.",
+            "evidence_to_close": "A-001 marked resolved/confirmed (repo exists per F-015) and Q-006's resolution filled (e.g. 'GitHub private repo Haaaiawd/paimon-voice-poc'), or both removed as no longer uncertain."
+          }
+        ],
+        "review": {
+          "mode": "independent",
+          "reviewer_id": "devin-keeper-subagent-r2",
+          "evidence": "Host spawned a fresh independent subagent with no access to the shaping conversation or the round-1 review beyond what is recorded on disk. Review conducted solely from files (.loom/*, root 00-07 docs, .env.example/.gitignore, reference/) plus `loom keeper prompt`, `loom context --keeper`, `loom check`. Every prior gap was re-verified against current file contents, not commit messages."
+        },
+        "can_auto_pass": false,
+        "at": "2026-09-21T15:52:46.821Z",
+        "closure_results": [
+          {
+            "gap": "TASK-003 acceptance contradicts its own boundary and has no modeled key precondition: criterion requires a table with BOTH DeepSeek and DashScope data (>=20 runs each), while the boundary permits running only Tongyi when the DeepSeek key is missing; additionally F-020 records the DashScope key as still pending, so with zero keys the task is entirely unrunnable and its acceptance is literally unreachable under the declared contingency.",
+            "evidence": "CLOSED. tasks.json TASK-003 criterion now reads '对每个已配置的 OpenAI-compatible endpoint（DeepSeek/通义千问）各跑 ≥20 次…至少一家可用即满足' plus a second criterion '对未配置 key 的 endpoint 优雅跳过并标注 MISSING_KEY'; boundary declares '任一 key 未到位则该家标注 MISSING_KEY；零 key 时任务保持 blocked' — explicit key precondition. The misfired chinese-tts-eval#C4 hook was removed; only low-latency-pipeline#C5 remains."
+          },
+          {
+            "gap": "Normative docs drifted from recorded decisions: root 06 §8 still requires '可替换至少 2 个 TTS Provider' (superseded by D-009 single-Fish; the interface-level reconciliation note lives only in .loom/design/mvp-evaluation.md which TASK-012 does not read); root 07 '尚未决定' items 1-3 are already resolved by D-009/D-010/F-016/F-017 but remain listed open; root 04 §6/§7 still say ASR unlocked / TTS two-vendor race; .loom/design/tech-stack.md cites wrong decision IDs throughout (ASR cites D-009, should be D-010; TTS cites D-008, should be D-009; Docker cites D-010, should be D-011); PROJECT.md says decisions are D-001-D-010 while D-011 exists. Housekeeping echoes: assumption A-001 still active though F-015 confirmed the repo; Q-006 marked resolved with empty resolution.",
+            "evidence": "PARTIALLY CLOSED, residual carried into new gaps 2 and 3. Closed: 04 §6 has a D-010 annotation (lines 110-112), 04 §7 a D-009 annotation (134-135), 06 §8 the TTS line is amended in place (263-264) satisfying the alternative closure path, 07 '尚未决定' carries a resolution banner (100-101) and the '开发前确认' list is all checked (153-159), tech-stack.md now cites correct IDs for the D-009-era truth (ASR=D-010 line 23, Docker=D-011 line 43, TTS=D-009 line 25), PROJECT.md range was corrected to D-001–D-011. Not closed: A-001 still active, Q-006 resolution still empty; and D-012/D-013/D-014 plus key arrival have re-staled several of these spots (see new gaps)."
+          },
+          {
+            "gap": "The speculation handshake that makes the latency budget reachable — ASR partial drives prompt pre-construction and LLM submission fires on turn_complete OR final (turn-taking#C6, asr-turn-interplay 'partial 驱动准备、final 驱动提交') — is referenced by no task's capability_hooks and covered by no acceptance criterion; no task owns which transcript text is submitted to the LLM at turn-confirm time.",
+            "evidence": "CLOSED. TASK-010 capability_hooks now includes turn-taking#C6 ('partial 驱动 prompt 预构造、turn_complete 即提交、投机可静默丢弃') and acceptance criterion 3 asserts 'ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中' with verify_by on latency log fields or pytest."
+          },
+          {
+            "gap": "Missing dependency edges: TASK-007 and TASK-008 verify_by demos need real microphone capture / speaker playback, which TASK-004 builds (src/turn, src/runtime), yet both depend only on TASK-002; TASK-011's second criterion requires end-to-end SILENCED verification but depends_on lacks TASK-010 (the pipeline assembly it would run on). PROJECT.md's stated order (010 → 011) is not encoded in depends_on.",
+            "evidence": "CLOSED. TASK-007 depends_on=[TASK-002,TASK-004], TASK-008 depends_on=[TASK-002,TASK-004], TASK-011 depends_on=[TASK-005,TASK-009,TASK-010]; graph remains acyclic with TASK-001 the unique zero-dep root (loom check: healthy, 0 errors)."
+          },
+          {
+            "gap": "SILENCED lifecycle producer unspecified: the SILENCE_REQUESTED event (doc 03 §4) has no declared producer — no doc or task says who detects '闭嘴两分钟' (keyword rule vs LLM intent) or who detects the wake condition '喊派蒙' inside SILENCED, while TASK-011 acceptance requires both behaviors.",
+            "evidence": "CLOSED. D-013 recorded (rule classifier on ASR_FINAL text, no LLM; wake on '派蒙' direct address/timeout/high-priority event; ASR keeps transcribing in SILENCED). conversation-core.md gained the 'SILENCED 的生产者与退出' section (lines 63-72) and TASK-011 acceptance criterion 2 names the same mechanism with a pytest verify_by."
+          },
+          {
+            "gap": "turn-taking dossier claims '模型判定是自然度上限' but does not record smart-turn-v3.2's official Chinese benchmark (accuracy 85.79%, FNR 9.26% — third-worst of 23 languages): ~9% of complete turns will fall into the stop_secs=3.0 fallback and dominate SEFA p95; C3's tuning expectation is unanchored to this fact.",
+            "evidence": "CLOSED. .loom/capabilities/turn-taking/research/smart-turn-zh-benchmark.md created with the numbers, p95 implication, model-vs-fallback observability requirement, and contingencies (tighten stop_secs, FilterIncomplete layer, future fine-tune; observe first). C3 now cites it (source: pipecat-smart-turn-mechanics.md, smart-turn-zh-benchmark.md) and embeds the numbers plus the metrics discipline; failure signals include the >10% fallback-rate signature; F-021 records the fact."
+          },
+          {
+            "gap": "The boundary between Pipecat's native machinery and the self-built Conversation Core is implicit: Pipecat ships user-turn start/stop strategies, InterruptionFrame broadcast, and context aggregators, while the project builds TurnManager/InterruptionManager/dual-history — no doc or task states whether native interruption is reused as trigger or disabled, or whether aggregators are bypassed, so double interruption paths or double context writes are decidable only by guesswork at TASK-010 integration time.",
+            "evidence": "CLOSED. D-012 recorded (Pipecat primitives = signal sources; state machine/InitiativePolicy/dual-history/interruption handling owned by src/conversation/; Pipecat native interruption used only as media-layer signal; single interruption path, double paths forbidden). conversation-core.md gained the 'Pipecat 原语 vs 自研 Core 的权责边界（防双路径）' section (lines 50-61) stating exactly this mapping."
+          },
+          {
+            "gap": "DLV-009 drift: deliverable title still promises 'LLM TTFT benchmark + TTS 对比测试' but post-D-009 no task delivers TTS comparison; TASK-003's chinese-tts-eval#C4 hook must_produce 'TTFT/TTFA/结构化成功率实测表' imports TTFA into a pure LLM benchmark — a misfired hook.",
+            "evidence": "CLOSED (with a new staleness echo carried into new gap 2). DLV-009 title narrowed to '赛马脚本：LLM TTFT benchmark（TTS 第一轮仅 Fish，其实测并入 TASK-008 验收）' — no longer promises a TTS comparison deliverable; TASK-003's hook corrected to low-latency-pipeline#C5 (分阶段 p50/p95). The parenthetical 'TTS 第一轮仅 Fish' is itself now stale under D-014 — tracked in new gap 2."
+          }
+        ]
       }
     ],
-    "prepared_digest": "52e695141e41864c8587f942ba9b8c4fe623434a468431b57239159a1d4df3e7",
-    "prepared_attempt": 2
+    "prepared_digest": "28c3e266c5a0ec9d7b4290b3a56cf23a023e53860c78ccbec9fa7f24ad4871e1",
+    "prepared_attempt": 3
   },
   "decision_ids": [
     "D-001",

@@ -413,24 +413,30 @@
     },
     {
       "id": "TASK-008",
-      "title": "Fish Audio TTS adapter",
-      "outcome": "Fish Audio streaming TTS 接入 TTSProvider 接口，支持流式播放与立即取消。",
+      "title": "TTS 双 adapter：Fish Audio + 百炼 CosyVoice 接入与管线内赛马",
+      "outcome": "Fish（s2.1-pro-free）与百炼 cosyvoice-v3-flash 两个 adapter 实现 TTSProvider 接口；同一测句集在真实管线内对比 TTFA/自然度/取消行为，产出选型数据。",
       "acceptance": [
         {
-          "criterion": "文本送进去能听到声音，输出 TTFA 数字",
-          "verify_by": "python -m src.providers.tts.fish_demo 人工听 + 终端打印 TTFA",
+          "criterion": "Fish adapter：WS 流式接入（s2.1-pro-free），LLM token 流→音频流，播放中 cancel() 立即停且无残音",
+          "verify_by": "python -m src.providers.tts.fish_demo 人工听 + pytest tests/test_fish_tts.py cancel 断言",
           "evidence": ""
         },
         {
-          "criterion": "播放中 cancel() 后音频立即停止且无残留 buffer 播放",
-          "verify_by": "pytest tests/test_fish_tts.py 或 demo 中打断验证",
+          "criterion": "百炼 adapter：cosyvoice-v3-flash WS 流式接入（continue-task 增量文本 + finish-task 收尾），cancel 立即停且无残音",
+          "verify_by": "python -m src.providers.tts.bailian_demo 人工听 + pytest cancel 断言",
+          "evidence": ""
+        },
+        {
+          "criterion": "同一测句集在真实管线内对两家各跑 ≥10 轮，输出热 TTFA（WS 常驻连接）对比表；胜出者写入决策记录",
+          "verify_by": "data/ 下 tts_benchmark 结果文件 + loom decision 更新",
           "evidence": ""
         }
       ],
       "done_when": [],
       "boundaries": [
-        "只实现 adapter",
-        "使用免费层模型串 s2.1-pro-free（付费模型会 402）；模型串写进 .env.example 注释"
+        "两家 key 均已就位（.env）",
+        " cosyvoice-v3.5-flash 当前账号 418 不可用，用 v3-flash",
+        "赛马结论不锁死——TTSProvider 抽象保持第二家随时可插"
       ],
       "depends_on": [
         "TASK-002",
@@ -449,22 +455,22 @@
         {
           "node": "chinese-tts-eval#C1",
           "at": "选接入协议时",
-          "must_produce": "WebSocket 主路接入"
+          "must_produce": "两家均 WS 流式接入"
         },
         {
           "node": "chinese-tts-eval#C2",
           "at": "实现文本推送时",
-          "must_produce": "语义边界发 flush + latency=balanced"
+          "must_produce": "Fish 语义边界 flush；百炼 continue-task 分句语义对齐"
         },
         {
           "node": "chinese-tts-eval#C3",
           "at": "实现 cancel 时",
-          "must_produce": "cancel 后停推/清 buffer/连续重开的实测断言"
+          "must_produce": "两家 cancel 后停推/清 buffer/连续重开的实测断言"
         },
         {
           "node": "low-latency-pipeline#C1",
           "at": "验收 TTFA 时",
-          "must_produce": "WS 常驻连接下的热 TTFA 实测值；若持续 >300ms 则记录并建议触发百炼 CosyVoice 回退"
+          "must_produce": "两家热 TTFA 对比表，供 D-014 赛马裁决"
         }
       ],
       "capability_exemption": "",
@@ -481,7 +487,7 @@
       },
       "evidence": [],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T14:25:04.013Z"
+      "updated_at": "2026-09-21T15:57:15.055Z"
     },
     {
       "id": "TASK-009",
