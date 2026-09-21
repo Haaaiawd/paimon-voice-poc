@@ -147,7 +147,9 @@ class TestPauseIsNotComplete:
 
 class TestBargeIn:
     def test_user_speech_during_speaking_is_barge_in(self):
-        """SPEAKING 中用户开口：新轮次 barge_in=True，状态机进 INTERRUPTED。"""
+        """SPEAKING 中用户开口：新轮次 barge_in=True；TASK-006 接线后
+        InterruptionManager 同步完成停播确认，状态 SPEAKING→INTERRUPTED→
+        LISTENING 一次走完。"""
         core, outputs = make_core()
         feed(core, CLEAN_TURN)
         core.publish(E.AGENT_SPEAKING)  # THINKING → SPEAKING
@@ -157,10 +159,15 @@ class TestBargeIn:
         feed(core, [(E.USER_SPEECH_STARTED, {}), (E.ASR_PARTIAL, {"text": "你敢"})])
         assert kinds(outputs)[:2] == [E.USER_TURN_STARTED, E.USER_TURN_CONTINUES]
         assert outputs[0].payload["barge_in"] is True
-        assert core.state == S.INTERRUPTED
-
-        # 停播确认 → LISTENING；打断轮次走完后 agent 仍可响应
-        core.publish(E.PLAYBACK_STOPPED)
+        transitions = [
+            (e.payload["from"], e.payload["to"])
+            for e in core.bus.history
+            if e.type == E.STATE_CHANGED
+        ]
+        assert transitions[-2:] == [
+            ("SPEAKING", "INTERRUPTED"),
+            ("INTERRUPTED", "LISTENING"),
+        ]
         assert core.state == S.LISTENING
         feed(
             core,

@@ -402,12 +402,12 @@
         {
           "criterion": "模拟打断事件后：播放停止、TTS buffer 清空、LLM 取消、状态进 INTERRUPTED→LISTENING",
           "verify_by": "pytest tests/test_interruption.py 断言六步全部发生",
-          "evidence": ""
+          "evidence": "tests/test_interruption.py::TestInterruptionSixSteps 5 例：fake playback.stop() 返回 played_s、fake tts.cancel() 清 buffer、track_llm 登记的 fake llm.cancel 置位、utterance 按 played_s 截断封盘、STATE_CHANGED 轨迹 SPEAKING→INTERRUPTED→LISTENING、AGENT_INTERRUPTED+PLAYBACK_STOPPED 事件落 bus history。"
         },
         {
           "criterion": "下一轮 LLM 输入含 assistant_heard / assistant_generated_but_not_heard / assistant_was_interrupted 三段",
           "verify_by": "pytest 断言构造的 context payload 结构与 doc 03 §3 一致",
-          "evidence": ""
+          "evidence": "test_next_turn_input_matches_doc03_section3：build_agent_input 返回 doc03§5 顶层结构 + interruption_context 与 §3 例句逐字段一致（assistant_heard 带 —— 截断标记、generated_but_not_heard、user、event=assistant_was_interrupted），一次性消费已断言；test_heard_vs_logical_history_separated 断言双历史分离。"
         }
       ],
       "done_when": [],
@@ -444,15 +444,33 @@
         "DLV-002",
         "DLV-005"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pytest tests/test_interruption.py：10 tests 全过；全套件 83 passed / 2 skipped（无声卡跳过），无回归。",
+        "实现：src/conversation/interruption.py（六步打断执行器）+ src/conversation/context.py（双历史 ContextManager），接入 ConversationCore（core.py）并导出（__init__.py）；fake playback/tts/llm 驱动，未接真实 provider。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "模拟打断事件后：播放停止、TTS buffer 清空、LLM 取消、状态进 INTERRUPTED→LISTENING",
+              "evidence": "tests/test_interruption.py::TestInterruptionSixSteps 5 例：fake playback.stop() 返回 played_s、fake tts.cancel() 清 buffer、track_llm 登记的 fake llm.cancel 置位、utterance 按 played_s 截断封盘、STATE_CHANGED 轨迹 SPEAKING→INTERRUPTED→LISTENING、AGENT_INTERRUPTED+PLAYBACK_STOPPED 事件落 bus history。"
+            },
+            {
+              "criterion": "下一轮 LLM 输入含 assistant_heard / assistant_generated_but_not_heard / assistant_was_interrupted 三段",
+              "evidence": "test_next_turn_input_matches_doc03_section3：build_agent_input 返回 doc03§5 顶层结构 + interruption_context 与 §3 例句逐字段一致（assistant_heard 带 —— 截断标记、generated_but_not_heard、user、event=assistant_was_interrupted），一次性消费已断言；test_heard_vs_logical_history_separated 断言双历史分离。"
+            }
+          ],
+          "at": "2026-09-21T21:58:21.501Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:07.499Z"
+      "updated_at": "2026-09-21T21:58:21.502Z",
+      "completed_at": "2026-09-21T21:58:21.502Z"
     },
     {
       "id": "TASK-007",
