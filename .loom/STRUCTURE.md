@@ -37,12 +37,18 @@ src/
 
 ## Configuration and build
 
-`pyproject.toml`（依赖与 Python 版本）、`.env`（API keys，不入库）、`.env.example`。
-开发机系统/Python 版本/是否允许 Docker 尚未确认（loom Q-004）。
+`pyproject.toml`（Python 3.12 与依赖清单）、`.env`（API keys，不入库）、`.env.example`、
+`Dockerfile`（依赖打包用）。语音闭环跑 Windows 原生环境，不走 WSL。
 
 ## Assets and fixtures
 
 `assets/`：测试音频样本、赛马用统一测试句集。`data/`：latency log 输出（gitignore）。
+
+## Reference（submodule）
+
+`reference/`：7 个开源项目的浅克隆 submodule（pipecat / smart-turn / silero-vad /
+fish-speech / funasr / cosyvoice / livekit），只作阅读参考，不作为依赖 import。
+清单与同步命令见 `reference/README.md`。
 
 ## Conventions
 

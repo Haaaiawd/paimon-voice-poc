@@ -1,0 +1,21 @@
+[submodule "reference/pipecat"]
+	path = reference/pipecat
+	url = https://github.com/pipecat-ai/pipecat
+[submodule "reference/smart-turn"]
+	path = reference/smart-turn
+	url = https://github.com/pipecat-ai/smart-turn
+[submodule "reference/silero-vad"]
+	path = reference/silero-vad
+	url = https://github.com/snakers4/silero-vad
+[submodule "reference/fish-speech"]
+	path = reference/fish-speech
+	url = https://github.com/fishaudio/fish-speech
+[submodule "reference/funasr"]
+	path = reference/funasr
+	url = https://github.com/modelscope/FunASR
+[submodule "reference/cosyvoice"]
+	path = reference/cosyvoice
+	url = https://github.com/FunAudioLLM/CosyVoice
+[submodule "reference/livekit"]
+	path = reference/livekit
+	url = https://github.com/livekit/livekit
