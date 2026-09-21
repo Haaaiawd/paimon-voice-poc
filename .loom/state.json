@@ -4,7 +4,7 @@
     "name": "paimon-voice-poc",
     "status": "shaping",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-21T12:48:55.138Z"
+    "updated_at": "2026-09-21T12:57:41.848Z"
   },
   "understanding": {
     "confirmed": [
@@ -91,6 +91,12 @@
         "text": "项目文档 00–07（README/scope/architecture/conversation core/tech stack/persona/MVP/decisions）已存在，是 loom 初始事实来源。",
         "source": "conversation",
         "at": "2026-09-21T12:48:55.124Z"
+      },
+      {
+        "id": "F-015",
+        "text": "远程仓库：GitHub 私有仓库 Haaaiawd/paimon-voice-poc，本地 main 分支已跟踪 origin/main。",
+        "source": "conversation",
+        "at": "2026-09-21T12:57:41.848Z"
       }
     ],
     "assumptions": [
@@ -156,8 +162,10 @@
         "id": "Q-006",
         "question": "远程仓库托管平台与可见性（GitHub private?）以及仓库名。",
         "impact": "medium",
-        "status": "open",
-        "at": "2026-09-21T12:48:55.125Z"
+        "status": "resolved",
+        "at": "2026-09-21T12:48:55.125Z",
+        "resolution": "",
+        "resolved_at": "2026-09-21T12:57:41.848Z"
       }
     ]
   },

@@ -4,32 +4,48 @@
 > Update this when the structure changes. Delete sections that do not apply. Add sections
 > that do. This is a map, not a prescription — each project declares its own conventions.
 
+代码尚未开始写。以下是按 `04_TECH_STACK_AND_OPEN_SOURCE.md` §10 约定的目标布局，
+创建文件时遵循；与现状不符时以现状为准并更新本文件。
+
 ## Source code
 
-Where implementation files go. Example: `src/` for application logic, `src/core/` for
-domain logic, `src/cli/` for command-line interface.
+```text
+src/
+  conversation/     # 核心资产：TurnManager / InterruptionManager / InitiativePolicy /
+                    # ContextManager / 状态机（自研，不依赖供应商 SDK）
+  character/        # 派蒙人格、Behavior Policy、情绪标签
+  turn/             # vad_adapter.py、smart_turn_adapter.py
+  providers/
+    asr/            # ASRProvider 抽象 + 各云端实现
+    llm/            # LLMProvider 抽象 + OpenAI-compatible 等
+    tts/            # TTSProvider 抽象（stream_audio / cancel）+ 赛马实现
+  metrics/          # latency log、SEFA、barge-in 计时
+  runtime/          # 音频采集/播放、pipeline 组装、入口 main
+```
+
+业务层不得直接 import 供应商 SDK，一律经 `providers/` 与 `turn/` 的 adapter。
 
 ## Tests
 
-Where test files go and how they mirror source structure. Example: `tests/` mirroring
-`src/` layout, or `__tests__/` co-located with source.
+`tests/` 镜像 `src/` 结构；`06_MVP_AND_EVALUATION.md` §4 的测试用例 A–G 是对话行为的
+验收基准。赛马脚本放 `scripts/`（TTS/LLM benchmark）。
 
 ## Documents
 
-Where project documentation goes (excluding `.loom/` which is LOOM state). Example:
-`docs/` for user-facing docs, `README.md` at root for entry.
+根目录 `00_`–`07_*.md` 为项目设计文档（编号顺序即阅读顺序），`README.md` 为入口。
+`.loom/` 为 LOOM 状态，纳入版本控制。
 
 ## Configuration and build
 
-Where build configs, CI definitions, and dependency manifests go. Example:
-`package.json`, `.github/workflows/`, `tsconfig.json`.
+`pyproject.toml`（依赖与 Python 版本）、`.env`（API keys，不入库）、`.env.example`。
+开发机系统/Python 版本/是否允许 Docker 尚未确认（loom Q-004）。
 
 ## Assets and fixtures
 
-Where static assets, test fixtures, and data files go. Example: `assets/`, `fixtures/`,
-`data/`.
+`assets/`：测试音频样本、赛马用统一测试句集。`data/`：latency log 输出（gitignore）。
 
 ## Conventions
 
-Any naming or placement conventions the Agent should follow. Example: "one module per
-file", "test files end with `.test.`", "config files are JSON not YAML".
+- Python，async pipeline（Pipecat processor/service 模式）。
+- 事件命名沿用 `03_CONVERSATION_CORE.md` §4（USER_SPEECH_STARTED、TURN_COMPLETE 等）。
+- 状态机状态名：IDLE / LISTENING / POSSIBLE_END / THINKING / SPEAKING / INTERRUPTED / SILENCED。

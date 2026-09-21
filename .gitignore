@@ -14,5 +14,6 @@ build/
 .ruff_cache/
 .mypy_cache/
 .ipynb_checkpoints/
+data/
 .DS_Store
 Thumbs.db
