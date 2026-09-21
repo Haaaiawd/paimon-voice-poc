@@ -93,12 +93,12 @@
         {
           "criterion": "三个 Provider 抽象类存在，业务层不直接 import 供应商 SDK",
           "verify_by": "grep 确认 src/ 内除 providers/ 外无供应商 SDK import；pytest tests/test_providers.py 通过",
-          "evidence": ""
+          "evidence": "ASRProvider/LLMProvider/TTSProvider 定义于 src/providers/{asr,llm,tts}/base.py 并经各自 __init__ 导出；inspect.isabstract 断言通过，直接实例化抛 TypeError；AST 守卫测试 test_no_vendor_sdk_imports_outside_adapters 扫描 src/ 全量 .py，providers/ 与 turn/ 之外零供应商 SDK import；pytest tests/test_providers.py → 5 passed"
         },
         {
           "criterion": "LLM adapter 对 mock OpenAI-compatible endpoint 流式返回 token，并能解析结构化输出",
           "verify_by": "pytest tests/test_llm_adapter.py 通过",
-          "evidence": ""
+          "evidence": "OpenAICompatibleLLM 经 httpx.MockTransport mock 的 /chat/completions SSE：stream_reply 逐 delta.content 产出 ['哈？','真的','假的？'] 且请求体 stream=true/model/messages/Authorization 断言通过；complete_structured 带 response_format={'type':'json_object'}，对拆成 3 段流式吐出的 JSON 解析为 AgentReply(speech='哈？你认真的？', emotion='teasing', energy=0.8)；围栏/未知 emotion→neutral/energy clamp/非 JSON→StructuredOutputError 均覆盖；HTTP 500→LLMError。pytest tests/test_llm_adapter.py → 4 passed"
         }
       ],
       "done_when": [],
@@ -135,15 +135,34 @@
       "covers": [
         "DLV-003"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "新增 src/providers/{asr,tts,llm}/base.py 三个抽象类 + src/providers/llm/openai_compatible.py（httpx SSE，trust_env=False 默认绕开 Clash 代理开销）；tests/test_providers.py 5 项 + tests/test_llm_adapter.py 4 项全部通过（pytest 9 passed in 0.10s）",
+        "capability hooks：ASRProvider 事件面仅 ASREvent(kind='partial'|'final')，__post_init__ 拒绝其他 kind（streaming-asr-zh C3）；TTSProvider.cancel docstring 契约 = 停推 + 清本地 buffer + 可立刻重开（chinese-tts-eval C3，fake 实现测试锁定语义）",
+        "rg 'import|from (dashscope|openai|fish_audio_sdk|modelscope|funasr|elevenlabs|minimax|pyaudio)' src/ --glob '!providers/**' --glob '!turn/**' 零匹配（exit 1）",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "三个 Provider 抽象类存在，业务层不直接 import 供应商 SDK",
+              "evidence": "ASRProvider/LLMProvider/TTSProvider 定义于 src/providers/{asr,llm,tts}/base.py 并经各自 __init__ 导出；inspect.isabstract 断言通过，直接实例化抛 TypeError；AST 守卫测试 test_no_vendor_sdk_imports_outside_adapters 扫描 src/ 全量 .py，providers/ 与 turn/ 之外零供应商 SDK import；pytest tests/test_providers.py → 5 passed"
+            },
+            {
+              "criterion": "LLM adapter 对 mock OpenAI-compatible endpoint 流式返回 token，并能解析结构化输出",
+              "evidence": "OpenAICompatibleLLM 经 httpx.MockTransport mock 的 /chat/completions SSE：stream_reply 逐 delta.content 产出 ['哈？','真的','假的？'] 且请求体 stream=true/model/messages/Authorization 断言通过；complete_structured 带 response_format={'type':'json_object'}，对拆成 3 段流式吐出的 JSON 解析为 AgentReply(speech='哈？你认真的？', emotion='teasing', energy=0.8)；围栏/未知 emotion→neutral/energy clamp/非 JSON→StructuredOutputError 均覆盖；HTTP 500→LLMError。pytest tests/test_llm_adapter.py → 4 passed"
+            }
+          ],
+          "at": "2026-09-21T17:32:08.649Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:06.959Z"
+      "updated_at": "2026-09-21T17:32:08.649Z",
+      "completed_at": "2026-09-21T17:32:08.649Z"
     },
     {
       "id": "TASK-003",

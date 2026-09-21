@@ -4,7 +4,8 @@
 > Update this when the structure changes. Delete sections that do not apply. Add sections
 > that do. This is a map, not a prescription — each project declares its own conventions.
 
-代码尚未开始写。以下是按 `04_TECH_STACK_AND_OPEN_SOURCE.md` §10 约定的目标布局，
+以下按 `04_TECH_STACK_AND_OPEN_SOURCE.md` §10 约定布局；TASK-002 已落
+`src/providers/{asr,llm,tts}/base.py` 抽象与 `llm/openai_compatible.py` adapter。
 创建文件时遵循；与现状不符时以现状为准并更新本文件。
 
 ## Source code

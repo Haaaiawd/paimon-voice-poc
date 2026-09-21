@@ -32,7 +32,7 @@
       "slug": "provider-adapters",
       "title": "ASR/LLM/TTS Provider 抽象与 adapter 层",
       "kind": "interface",
-      "notes": "",
+      "notes": "TASK-002 完成(2026-09-21)：ASRProvider（ASREvent 仅 partial/final，streaming-asr-zh C3）、TTSProvider（stream_audio + cancel 停推/清 buffer/可重开契约，chinese-tts-eval C3）、LLMProvider（stream_reply + complete_structured→AgentReply）；OpenAICompatibleLLM 用 httpx SSE（trust_env=False 绕 Clash），pytest 9 项全过，src/ 非 adapter 目录零供应商 SDK import。真实 ASR/TTS 实现归 TASK-007/008。",
       "covered_by": [
         "TASK-002",
         "TASK-007",
