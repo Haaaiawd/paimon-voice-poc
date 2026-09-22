@@ -43,7 +43,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from character.agent import CharacterAgent
 from conversation.core import ConversationCore
 from conversation.events import Event, EventType, TEXT_TURN_SOURCE
-from memory.loader import load_memory_digest
+from memory.loader import load_memory
 from metrics.latency import LatencyLog
 from providers.llm.base import LLMProvider
 from runtime.pipeline import SpeechFieldExtractor, VoicePipeline
@@ -263,14 +263,13 @@ class GatewayRuntime:
         agent = CharacterAgent(llm)
         self._delta_sinks: set[Callable[[str], None]] = set()
         tapped = _SpeechDeltaTap(agent, self._emit_delta)
-        memory_text = load_memory_digest(
-            env.get("MEMORY_DIR") or (ROOT / "memory")
-        )
+        memory_pack = load_memory(env.get("MEMORY_DIR") or (ROOT / "memory"))
         self.core = ConversationCore(
             playback=self.player,
             tts=tts,
             min_barge_in_s=args.min_barge_in_s,
-            memory_text=memory_text,
+            memory_text=memory_pack.text,
+            memory_triggers=memory_pack.triggers,
         )
         self.metrics = LatencyLog(self.core.bus, outdir=args.outdir)
         self.pipeline = VoicePipeline(

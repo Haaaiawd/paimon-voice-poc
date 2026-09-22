@@ -38,7 +38,7 @@ export interface AgentReply {
   energy: number;
 }
 
-export type ChatRole = 'user' | 'paimon';
+export type ChatRole = 'user' | 'paimon' | 'notice';
 
 export interface ChatMessage {
   id: string;
@@ -48,12 +48,6 @@ export interface ChatMessage {
   reply?: AgentReply;
   /** True while reply.delta frames are still arriving. */
   streaming?: boolean;
-}
-
-/** A transient UI notice (e.g. "voice input is mock-only"). Not a chat message. */
-export interface Notice {
-  id: string;
-  text: string;
 }
 
 // ---- WS contract frames (FRONTEND_DEMO_DESIGN.md §4) ----

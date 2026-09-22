@@ -27,7 +27,7 @@ from dotenv import dotenv_values
 
 from character.agent import CharacterAgent
 from conversation.core import ConversationCore
-from memory.loader import load_memory_digest
+from memory.loader import load_memory
 from metrics.latency import LatencyLog
 from runtime.pipeline import VoicePipeline
 from runtime.simulated import (
@@ -246,13 +246,13 @@ async def _run(args) -> int:
     player = _build_player(args, tts)
     agent = CharacterAgent(llm)
 
+    pack = load_memory(env.get("MEMORY_DIR") or (ROOT / "memory"))
     core = ConversationCore(
         playback=player,
         tts=tts,
         min_barge_in_s=args.min_barge_in_s,
-        memory_text=load_memory_digest(
-            env.get("MEMORY_DIR") or (ROOT / "memory")
-        ),
+        memory_text=pack.text,
+        memory_triggers=pack.triggers,
     )
     metrics = LatencyLog(core.bus, outdir=args.outdir)
     pipeline = VoicePipeline(

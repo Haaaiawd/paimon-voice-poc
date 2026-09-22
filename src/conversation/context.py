@@ -108,11 +108,18 @@ class ContextManager:
         character: str = "paimon",
         history_limit: int = 20,
         memory_text: str = "",
+        memory_triggers: frozenset[str] = frozenset(),
+        memory_hot_turns: int = 3,
     ) -> None:
         self.character = character
         self.history_limit = history_limit
-        #: 启动期注入的长期记忆摘要（memory/ fixture），逐轮进 agent input。
+        #: 长期记忆摘要（memory/ fixture）+ 触发词。模仿人类回忆：
+        #: 只有输入命中触发词才注入；命中后挂住 memory_hot_turns 轮供追问；
+        #: 平时不注入，专注当下。
         self.memory_text = memory_text
+        self.memory_triggers = memory_triggers
+        self.memory_hot_turns = memory_hot_turns
+        self._memory_hot = 0
         self.logical_history: list[dict[str, Any]] = []
         self.heard_history: list[dict[str, Any]] = []
         self.utterances: list[AgentUtterance] = []
@@ -230,6 +237,16 @@ class ContextManager:
             self.pending_interruption = None
         if interruption is not None:
             interruption["user"] = last_user_text
+        # 记忆门控：命中触发词 → 上桌（挂 hot 轮）；未命中且在 hot 窗口
+        # → 递减续命；否则不下发——模型看不到记忆自然不会主动提。
+        memory = None
+        if self.memory_text:
+            if any(t in last_user_text for t in self.memory_triggers):
+                self._memory_hot = self.memory_hot_turns
+            elif self._memory_hot > 0:
+                self._memory_hot -= 1
+            if self._memory_hot > 0:
+                memory = self.memory_text
         return {
             "character": character or self.character,
             "state": str(state),
@@ -238,7 +255,7 @@ class ContextManager:
                 self.heard_history[-self.history_limit :]
             ),
             "interruption_context": interruption,
-            "memory": self.memory_text or None,
+            "memory": memory,
             "silence_duration_ms": int(silence_duration_ms),
             "initiative_reason": initiative_reason,
             "behavior_constraints": dict(behavior_constraints or {}),

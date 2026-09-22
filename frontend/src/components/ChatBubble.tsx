@@ -8,6 +8,9 @@ import avatarUrl from '../assets/paimon-avatar.svg';
  * emotion badge slot (FRONTEND_DEMO_DESIGN.md §3.1 P0).
  */
 export function ChatBubble({ message }: { message: ChatMessage }) {
+  if (message.role === 'notice') {
+    return <div className="chat-notice">( {message.text} )</div>;
+  }
   if (message.role === 'user') {
     return (
       <div className="bubble-row bubble-row-user">

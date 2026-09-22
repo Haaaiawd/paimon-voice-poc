@@ -12,7 +12,6 @@ import { SketchPageHeader, SketchPaper } from 'blackchalk';
 import type {
   AgentReply,
   ChatMessage,
-  Notice,
   PipelineState,
   ServerFrame,
 } from './types';
@@ -35,7 +34,6 @@ interface ChatState {
   pipeline: PipelineState;
   /** True while the backend is THINKING and no reply.delta has arrived yet. */
   typing: boolean;
-  notices: Notice[];
   lastSefaMs: number | null;
   /**
    * Text of the last locally-sent user message awaiting its asr.final echo.
@@ -68,7 +66,10 @@ function reducer(state: ChatState, action: Action): ChatState {
     case 'notice':
       return {
         ...state,
-        notices: [...state.notices, { id: uid(), text: action.text }],
+        messages: [
+          ...state.messages,
+          { id: uid(), role: 'notice', text: action.text },
+        ],
       };
     case 'frame': {
       const f = action.frame;
@@ -134,20 +135,36 @@ function reducer(state: ChatState, action: Action): ChatState {
         }
         case 'latency':
           return { ...state, lastSefaMs: f.sefa_ms };
-        case 'interrupted':
+        case 'interrupted': {
+          // 打断提示进入消息时间线：先把在播的流式气泡收掉，
+          // 提示插在它后面——后续对话自然排在提示下方。
+          const last = state.messages[state.messages.length - 1];
+          const base =
+            last?.role === 'paimon' && last.streaming
+              ? [
+                  ...state.messages.slice(0, -1),
+                  { ...last, streaming: false },
+                ]
+              : state.messages;
           return {
             ...state,
-            notices: [
-              ...state.notices,
-              { id: uid(), text: `派蒙被打断（听到：${f.heard_text}）` },
+            typing: false,
+            messages: [
+              ...base,
+              {
+                id: uid(),
+                role: 'notice',
+                text: `派蒙被打断（听到：${f.heard_text}）`,
+              },
             ],
           };
+        }
         case 'error':
           return {
             ...state,
-            notices: [
-              ...state.notices,
-              { id: uid(), text: `连接异常：${f.message}` },
+            messages: [
+              ...state.messages,
+              { id: uid(), role: 'notice', text: `连接异常：${f.message}` },
             ],
           };
         // asr.partial / audio.chunk: partials aren't rendered; audio chunk
@@ -203,7 +220,6 @@ function ChatProvider({ children }: { children: ReactNode }) {
     messages: [],
     pipeline: 'IDLE',
     typing: false,
-    notices: [],
     lastSefaMs: null,
     pendingEcho: null,
   });
@@ -346,11 +362,7 @@ function Page() {
           />
           <NowPlayingBar playing={nowPlaying} onStop={stopPlayback} />
           <SketchPaper className="chat-paper">
-            <ChatList
-              messages={state.messages}
-              typing={state.typing}
-              notices={state.notices}
-            />
+            <ChatList messages={state.messages} typing={state.typing} />
           </SketchPaper>
           <Composer
             disabled={false}
