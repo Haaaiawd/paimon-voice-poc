@@ -26,6 +26,22 @@ src/
 
 业务层不得直接 import 供应商 SDK，一律经 `providers/` 与 `turn/` 的 adapter。
 
+## Frontend demo
+
+```text
+frontend/           # 独立前端 demo（Vite + React + TS + Blackchalk）
+  src/
+    components/     # ChatBubble / Composer / EmotionBadge / TypingIndicator / StateBar
+    backend/        # ChatBackend 接口 + MockBackend / WsBackend 双实现
+    mocks/          # 预设对话剧本（真 AgentReply 形状）
+    styles/         # Blackchalk theme + 中文手写体回退链
+  TODO.md           # 前端 demo 进度清单
+  package.json
+  vite.config.ts
+```
+
+前端与后端仅经 WebSocket JSON 契约通信，不共享代码；前端不引入 `.loom/`，进度由 `TODO.md` 管理。契约唯一事实源：`.loom/design/FRONTEND_DEMO_DESIGN.md` §4。
+
 ## Tests
 
 `tests/` 镜像 `src/` 结构；`06_MVP_AND_EVALUATION.md` §4 的测试用例 A–G 是对话行为的
