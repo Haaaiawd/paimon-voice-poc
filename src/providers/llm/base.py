@@ -51,6 +51,20 @@ class AgentReply:
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
+#: 兜底打捞：JSON 结构损坏但 speech 字段完整时按字段取值。
+_SPEECH_FIELD_RE = re.compile(r'"speech"\s*:\s*"((?:[^"\\]|\\.)*)"')
+
+
+def _salvage_speech(text: str) -> str | None:
+    """从坏 JSON 里捞 "speech": "..."——结构坏了但值完整时仍可用。"""
+    m = _SPEECH_FIELD_RE.search(text)
+    if not m:
+        return None
+    try:
+        return json.loads(f'"{m.group(1)}"')
+    except json.JSONDecodeError:
+        return m.group(1)
+
 
 def _extract_json(text: str) -> str:
     """容忍 ```json 围栏与前后多余文字，取出最外层 JSON 对象。"""
@@ -77,7 +91,10 @@ def parse_agent_reply(text: str) -> AgentReply:
 
     try:
         data = json.loads(_extract_json(text))
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, StructuredOutputError) as e:
+        salvaged = _salvage_speech(text)
+        if salvaged is not None:
+            return AgentReply(speech=salvaged)
         raise StructuredOutputError(f"invalid JSON in LLM output: {e}") from e
     if not isinstance(data, dict):
         raise StructuredOutputError(f"LLM output is not a JSON object: {data!r}")

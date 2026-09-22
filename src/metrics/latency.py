@@ -307,6 +307,12 @@ class LatencyLog:
                 if self.current is not None:
                     self.current.reply_speech = event.payload.get("speech")
                     self.current.reply_emotion = event.payload.get("emotion")
+                    # 诊断留痕：空回复/错误时的原始 LLM 输出进 extra，
+                    # 分辨"模型选择沉默"与"输出没被接住"。
+                    if event.payload.get("noop"):
+                        self.current.extra["noop"] = True
+                    if raw := event.payload.get("raw"):
+                        self.current.extra["raw"] = raw
             case EventType.PLAYBACK_STOPPED:
                 # 打断路径先封被切轮次；自然播完封当前轮。
                 rec = self._record_for_playback_stop(event)

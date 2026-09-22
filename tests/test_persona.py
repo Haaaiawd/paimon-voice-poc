@@ -174,13 +174,14 @@ class TestSystemPrompt:
         )
         assert "安静" in silenced
 
-    def test_long_answer_relaxes_length(self):
-        """doc 05 §3：用户明确要求解释时长度槽位放宽。"""
+    def test_length_slot_delegates_judgment(self):
+        """长度槽位把判断权交给模型：基线+上限都摆出来，不做关键词门。"""
         prompt = build_system_prompt(
-            PAIMON,
-            BehaviorConstraints(max_sentences=6, long_answer=True),
+            PAIMON, BehaviorConstraints(max_sentences=2)
         )
-        assert "要求解释" in prompt and "6 句" in prompt
+        assert "2 句" in prompt
+        assert f"{PAIMON.long_max_sentences} 句" in prompt
+        assert "判断归你" in prompt
 
     def test_memory_slot_conditional(self):
         """记忆槽位是 stable core 的数据层：有记忆渲染 记忆： 行，
@@ -221,14 +222,12 @@ class TestBehaviorPolicy:
         )
         assert c.is_initiative and c.may_noop
 
-    @pytest.mark.parametrize(
-        "text",
-        ["给我解释一下量子纠缠", "为什么天空是蓝的", "详细讲讲这个方案"],
-    )
-    def test_explain_request_allows_long_answer(self, text):
-        c = BehaviorPolicy().derive({**NORMAL_INPUT, "last_user_text": text})
-        assert c.long_answer
-        assert c.max_sentences == PAIMON.long_max_sentences
+    def test_no_keyword_rules_for_length(self):
+        """长度判断放权给模型：解释类请求不再触发关键词放宽规则。"""
+        c = BehaviorPolicy().derive(
+            {**NORMAL_INPUT, "last_user_text": "给我解释一下量子纠缠"}
+        )
+        assert c.max_sentences == PAIMON.default_max_sentences
 
     def test_explicit_overrides_win(self):
         """pipeline 显式 behavior_constraints 覆盖规则推导。"""

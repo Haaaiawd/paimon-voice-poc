@@ -723,6 +723,13 @@ class VoicePipeline:
                     "energy": reply.energy,
                     "should_continue": reply.should_continue,
                     "noop": noop,
+                    # 空回复留痕：模型真选了 NOOP 还是输出了我们没接住的
+                    # 格式，看 raw 一眼就能分清（latency log extra.raw）。
+                    **(
+                        {"raw": "".join(raw_parts)[:400]}
+                        if noop and any(raw_parts)
+                        else {}
+                    ),
                 },
             )
             await self._finish_playback(
@@ -736,7 +743,12 @@ class VoicePipeline:
             self.errors.append(f"respond: {e}")
             self.bus.publish(
                 EventType.AGENT_REPLY,
-                {"turn_id": turn_id, "speech": "", "error": str(e)},
+                {
+                    "turn_id": turn_id,
+                    "speech": "",
+                    "error": str(e),
+                    "raw": "".join(raw_parts)[:400],
+                },
             )
             await self._finish_playback(utterance, reason="error")
         finally:
