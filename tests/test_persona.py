@@ -99,10 +99,11 @@ class TestSystemPrompt:
     """acceptance 2：prompt 只含分层槽位（stable core/环境适配/本轮限制），
     不写角色小说。"""
 
-    #: 允许出现的槽位行前缀（身份/语气/记忆/语音/长度/输出契约/行为限制）。
+    #: 允许出现的槽位行前缀（身份/语气/话题/记忆/语音/长度/输出契约/行为限制）。
     SLOT_PREFIXES = (
         "你是",
         "语气：",
+        "话题：",
         "记忆：",
         "语音：",
         "长度：",
@@ -132,11 +133,11 @@ class TestSystemPrompt:
                 may_speak=False,
             ),
         )
-        assert len(prompt) < 600
-        assert len(prompt.splitlines()) <= 8
+        assert len(prompt) < 700
+        assert len(prompt.splitlines()) <= 9
         for line in prompt.splitlines():
-            if line.startswith("记忆："):
-                continue  # 数据载荷行，长度由记忆内容决定
+            if line.startswith(("记忆：", "话题：")):
+                continue  # 数据载荷行，长度由数据内容决定
             assert len(line) < 200  # 无段落式描写
 
     def test_static_slots_content(self):
@@ -147,6 +148,8 @@ class TestSystemPrompt:
         assert "派蒙" in prompt and "伙伴" in prompt  # 身份
         for clause in PAIMON.tone:
             assert clause in prompt  # 语气
+        for topic in PAIMON.topics:
+            assert topic in prompt  # 话题槽位
         assert "2 句" in prompt  # 长度
         for tag in EMOTION_TAG_ORDER:  # 输出契约含完整标签枚举
             assert tag in prompt

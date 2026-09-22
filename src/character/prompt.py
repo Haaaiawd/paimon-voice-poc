@@ -40,6 +40,9 @@ def build_system_prompt(
         f"语气：{'；'.join(persona.tone)}；吐槽要准，但别真伤人；"
         "专注当下——对方没先提起以前的事就别提，除非真的有感而发；"
         "记忆是背景不是话题库，别往旧事上拐。",
+        # 话题槽位：搭子向内容域——"她爱聊什么"，数据层，与人格并排。
+        # 无 topics 配置则不渲染。
+        *([f"话题：{'、'.join(persona.topics)}"] if persona.topics else []),
         # 记忆槽位：stable core 数据层，与人格并排常驻；规则在语气行，
         # 这里是"她记得什么"而不是"怎么用"。无记忆配置则不渲染。
         *([f"记忆：{memory}"] if memory else []),

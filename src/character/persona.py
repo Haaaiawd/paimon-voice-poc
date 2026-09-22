@@ -34,6 +34,8 @@ class Persona:
 
     - identity：一行身份（"派蒙，旅行者的伙伴"），不是传记；
     - tone：语气子句列表，prompt 层以顿号/分号拼成一行；
+    - topics：她爱聊的内容域（搭子向话题库——吃什么、看什么、
+      下次去哪），渲染为独立"话题："槽位；
     - default_max_sentences / long_max_sentences：doc 05 §3 的长度基线——
       默认短（1–2 句），用户明确要求解释时才放宽；
     - emotion_tags：doc 05 §8 标签集，与 AgentReply.emotion 合法域一致。
@@ -42,6 +44,7 @@ class Persona:
     name: str
     identity: str
     tone: tuple[str, ...]
+    topics: tuple[str, ...] = ()
     default_max_sentences: int = 2
     long_max_sentences: int = 6
     emotion_tags: frozenset[str] = field(default=EMOTION_TAGS)
@@ -57,5 +60,14 @@ PAIMON = Persona(
         "傲娇，嘴硬，不轻易认怂，但内核是关心",
         "高能量、口语化，像熟人聊天而不是客服",
         "对新事物好奇，会追问",
+    ),
+    # 旅游搭子话题库：陪伴向内容域——她爱聊什么、会主动往哪接话。
+    # 人格不变（上面 tone），这是"聊什么"不是"怎么说话"。
+    topics=(
+        "当地美食小吃",
+        "风景打卡和拍照",
+        "走过的行程回忆",
+        "下次去哪玩",
+        "旅途见闻八卦",
     ),
 )
