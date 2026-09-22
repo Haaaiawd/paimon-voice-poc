@@ -114,8 +114,13 @@ class InterruptionManager:
         if event.type == EventType.SILENCE_REQUESTED:
             # 用户要求安静：有在途 utterance 就打断；机器已进 SILENCED，
             # 末尾的 PLAYBACK_STOPPED 被幂等忽略，静默保持。
+            # 强弱同 USER_SPEECH_STARTED 口径：未出声的不算打断。
             if self._utterance_open():
-                self._execute(trigger=str(event.type))
+                utterance = self._ctx.current_utterance
+                self._execute(
+                    trigger=str(event.type),
+                    audible=utterance is not None and utterance.audio_s > 0,
+                )
             return
         if self._machine.state == ConversationState.SILENCED:
             return  # 静默中不产生任何打断动作
@@ -128,18 +133,23 @@ class InterruptionManager:
             self.skipped.append(event)
             return
         if self._utterance_open() or self._machine.state == ConversationState.INTERRUPTED:
-            self._execute(trigger=str(event.type))
+            # 强弱判定：只有"派蒙真的在出声"（TTS 已产出音频）才算打断——
+            # 记 heard-history、通知前端。生成中被掐/纯状态清理 = 弱打断，
+            # 静默收拾（停播/取消照做），不进历史、不发 AGENT_INTERRUPTED。
+            utterance = self._ctx.current_utterance
+            audible = utterance is not None and utterance.audio_s > 0
+            self._execute(trigger=str(event.type), audible=audible)
 
     # ---- 六步 ----
 
-    def _execute(self, *, trigger: str) -> dict[str, Any]:
+    def _execute(self, *, trigger: str, audible: bool = True) -> dict[str, Any]:
         self._executing = True
         try:
-            return self._execute_steps(trigger=trigger)
+            return self._execute_steps(trigger=trigger, audible=audible)
         finally:
             self._executing = False
 
-    def _execute_steps(self, *, trigger: str) -> dict[str, Any]:
+    def _execute_steps(self, *, trigger: str, audible: bool) -> dict[str, Any]:
         utterance = self._ctx.current_utterance
         errors: list[str] = []
 
@@ -167,8 +177,13 @@ class InterruptionManager:
             except Exception as e:
                 errors.append(f"llm.cancel: {e}")
 
-        # 4. 记录已播放内容：heard / generated_but_not_heard 分离入双历史。
-        self._ctx.record_interruption(played_s)
+        # 4. 强打断：heard / generated_but_not_heard 分离入双历史 +
+        #    pending interruption context（告诉派蒙她被打断了）。
+        #    弱打断：静默丢弃，派蒙视角她没说过话。
+        if audible:
+            self._ctx.record_interruption(played_s)
+        else:
+            self._ctx.discard_current()
 
         record = {
             "trigger": trigger,
@@ -176,13 +191,15 @@ class InterruptionManager:
             "utterance_id": utterance.id if utterance else None,
             "heard": utterance.heard if utterance else "",
             "not_heard": utterance.not_heard if utterance else "",
+            "weak": not audible,
             "errors": errors,
         }
         self.interruptions.append(record)
 
-        # 5. AGENT_INTERRUPTED 域通知；由本事件触发（非 AGENT_INTERRUPTED 自身）
-        #    时才发，避免自我回声。机器对不适用触发幂等忽略。
-        if trigger != str(EventType.AGENT_INTERRUPTED):
+        # 5. AGENT_INTERRUPTED 域通知：仅强打断发（前端"被打断"提示、
+        #    metrics barge-in 口径都以真出声为准）；由本事件触发（非
+        #    AGENT_INTERRUPTED 自身）时才发，避免自我回声。
+        if audible and trigger != str(EventType.AGENT_INTERRUPTED):
             self._bus.publish(EventType.AGENT_INTERRUPTED, dict(record))
 
         # 6. PLAYBACK_STOPPED → INTERRUPTED→LISTENING（doc §2.2 第 6 步）。

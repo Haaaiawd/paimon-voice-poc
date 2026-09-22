@@ -49,6 +49,7 @@ class AgentUtterance:
     segments: list[SpokenSegment] = field(default_factory=list)
     open: bool = True
     interrupted: bool = False
+    discarded: bool = False  # 弱打断静默丢弃：不进历史
     played_s: float = 0.0
     heard: str = ""
     not_heard: str = ""
@@ -137,6 +138,17 @@ class ContextManager:
         self.heard_history.append(dict(entry))
 
     # ---- 封盘 ----
+
+    def discard_current(self) -> AgentUtterance | None:
+        """静默丢弃在途 utterance（弱打断：未出声的内容不进历史、
+        不产 interruption context——用户视角派蒙没说过话）。"""
+        u = self.current_utterance
+        if u is None:
+            return None
+        u.open = False
+        u.discarded = True
+        self.current_utterance = None
+        return u
 
     def seal_current(self, played_s: float | None = None) -> AgentUtterance | None:
         """自然播完封盘：heard=全部已交付文本，不产出 interruption context。"""

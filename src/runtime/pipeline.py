@@ -466,6 +466,8 @@ class VoicePipeline:
         if len(norm) < _ECHO_MIN_CHARS:
             return False
         for u in self.core.context.utterances[-_ECHO_LOOKBACK:]:
+            if u.discarded or u.audio_s <= 0:
+                continue  # 未出声/被丢弃的内容不可能被麦克风听见
             cand = _norm_speech(u.spoken_text)
             if len(cand) < _ECHO_MIN_CHARS:
                 continue

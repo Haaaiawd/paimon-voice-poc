@@ -149,22 +149,52 @@ class TestInterruptionSixSteps:
         assert record["errors"] == []
 
     def test_interrupt_during_thinking_cancels_in_flight(self):
-        """THINKING（LLM 在途、未出声）用户开口：取消 LLM + TTS，
-        heard=""，全部 generated 记为 not_heard。"""
+        """弱打断：THINKING（LLM 在途、未出声）用户开口——停播/取消照做，
+        但不算打断：utterance 静默丢弃、无 AGENT_INTERRUPTED、
+        不产 interruption context（派蒙不知道自己"说过"什么）。"""
         core, playback, tts, llm = make_core()
         drive_to_thinking(core)
         utterance = core.context.begin_utterance()
         utterance.add_generated("我觉得你今天")  # 还在流式生成，未交付 TTS
+        core.bus.clear_history()
 
         core.publish(E.USER_SPEECH_STARTED)
 
         assert llm.cancelled is True
         assert tts.cancel_calls == 1
         assert playback.stop_calls == 1  # 停播无害（played_s=0）
-        assert utterance.interrupted is True
-        assert utterance.heard == ""
-        assert utterance.not_heard == "我觉得你今天"
+        # 弱打断语义：丢弃而非打断封账
+        assert utterance.open is False
+        assert utterance.discarded is True
+        assert utterance.interrupted is False
+        assert core.context.pending_interruption is None
+        # 无 AGENT_INTERRUPTED 通知；PLAYBACK_STOPPED 照常收回状态机
+        types = [e.type for e in core.bus.history]
+        assert E.AGENT_INTERRUPTED not in types
+        assert E.PLAYBACK_STOPPED in types
+        # 生成的未出声文本不进任何历史
+        all_text = "".join(
+            e["text"] for e in core.context.heard_history
+        ) + "".join(e["text"] for e in core.context.logical_history)
+        assert "我觉得你今天" not in all_text
+        assert core.interruption.interruptions[-1]["weak"] is True
         assert core.state == S.LISTENING
+
+    def test_strong_interrupt_requires_audible_audio(self):
+        """强弱分界：utterance 有已交付音频（audio_s>0）才算真打断。"""
+        core, playback, tts, llm = make_core(played_s=1.3)
+        drive_to_speaking(core)
+        utterance = doc_utterance(core)  # audio_s = 2.0，有声
+        core.bus.clear_history()
+
+        core.publish(E.USER_SPEECH_STARTED)
+
+        types = [e.type for e in core.bus.history]
+        assert E.AGENT_INTERRUPTED in types  # 强打断：通知
+        assert utterance.interrupted is True
+        assert utterance.discarded is False
+        assert core.interruption.interruptions[-1]["weak"] is False
+        assert core.context.pending_interruption is not None  # 告诉派蒙
 
     def test_silence_request_interrupts_utterance(self):
         """SPEAKING 中用户要求安静：六步照跑、记录打断，状态停在 SILENCED。"""
