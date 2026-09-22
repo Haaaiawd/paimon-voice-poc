@@ -19,7 +19,8 @@
 ```
 
 用户可随时插嘴，派蒙立即停止播放并知道自己被打断；安静时按规则偶尔主动开口；
-用户要求安静时进入 SILENCED。Terminal UI，无 GUI。
+用户要求安静时进入 SILENCED。UI 有两层：`runtime/main.py` 终端入口与
+`frontend/` 浏览器 demo（WS 契约见 design/FRONTEND_DEMO_DESIGN.md §4）。
 
 ## Boundaries and consequential assumptions
 
@@ -67,10 +68,11 @@
 
 ## Work map
 
-`.loom/tasks.json`：12 个 task 覆盖全部 11 个 deliverable。执行序：
-TASK-001（环境）→ 002（接口）/004（音频轮次）/005（Core）并行 → 003（LLM 赛马，
-需任一 LLM key）、006（打断）、007（ASR，key 已到位）、008（TTS 双 adapter 赛马，
-key 已到位）、009（人格）→ 010（端到端+UI+metrics）→ 011（主动性）→ 012（MVP 验收）。
+`.loom/tasks.json`：15 个 task 覆盖全部 12 个 deliverable，当前全部 done。
+执行序：TASK-001（环境）→ 002（接口）/004（音频轮次）/005（Core）并行 →
+003（LLM 赛马）、006（打断）、007（ASR）、008（TTS 双 adapter 赛马）、
+009（人格）→ 010（端到端+metrics）→ 011（主动性）→ 012（MVP 验收）；
+016–018 为前端 demo 三阶段（脚手架/WsBackend 接真管线/语音上行+打断+记忆 UI）。
 
 ## Decision history
 

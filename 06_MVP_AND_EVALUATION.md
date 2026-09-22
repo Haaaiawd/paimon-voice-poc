@@ -30,7 +30,8 @@ Barge-in
 
 ## 2. 第一版 UI
 
-无需 GUI。
+（更新：2026-09-22 起另有 `frontend/` 浏览器 demo，WS 契约见
+`.loom/design/FRONTEND_DEMO_DESIGN.md` §4；终端入口 `runtime/main.py` 仍在。）
 
 Terminal 足够：
 

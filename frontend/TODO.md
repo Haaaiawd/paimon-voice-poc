@@ -23,17 +23,17 @@
 - [x] 后端 `src/runtime/ws_gateway.py`（后端任务，不在本目录）
 - [x] `VITE_BACKEND=ws` 实测对话
 - [x] 契约一致性核对（§4 全字段 vs EventBus/AgentReply）
-- [ ] 可选：浏览器播放 TTS 音频 → 已在阶段 3 实现，但 ws_gateway 目前
-  只经本地声卡/WavSink 出声，尚不向 WS 发 audio.chunk（后端缺口，非前端 bug）
+- [x] 浏览器播放 TTS 音频 → ws_gateway 经 _AudioTapPlayer 向 WS 广播
+  `audio.chunk` 头 + PCM 二进制帧（2026-09-22 后端缺口已补）
 
 ## 阶段 3 — 语音上行 / 打断 / 记忆 UI（TASK-018）
 
 - [x] 浏览器麦克风采集 → PCM 16kHz/16bit/mono 二进制帧上行
   （`audio/MicCapture.ts`：AudioWorklet → 重采样 16k → 80ms s16 帧 →
   `user.audio.start` + binary + `user.audio.end`）
-- [x] TTS 音频播放：`audio/ReplyPlayer.ts` 按轮聚合 audio.chunk 二进制帧 →
-  WAV blob → HTMLAudioElement；`Waveform.tsx` 手绘波形 + 播放头
-  （mock 后端发合成 pcm24k 音调，链路已可演练；真网关待发 binary）
+- [x] TTS 音频播放：`audio/ReplyPlayer.ts` 首个 PCM 块到达即用
+  AudioContext + AudioBufferSourceNode 连续调度（不等 reply.final），
+  `Waveform.tsx` 手绘波形 + 播放头（真网关 audio.chunk + binary 已通）
 - [x] barge-in 交互：SPEAKING 中点麦克风 → 本地立即停播 + 上行开窗；
   `interrupted` 帧 → 停播 + 丢弃缓冲
 - [x] 情绪可视化：EmotionBadge 单色图标+标签（§8 八标签全集，TASK-016 已落）

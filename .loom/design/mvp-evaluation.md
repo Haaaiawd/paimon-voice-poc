@@ -11,7 +11,8 @@
 ## Inputs, outputs, and boundaries
 
 最小闭环：Mic → VAD → Turn → ASR → Core → LLM stream → TTS stream → Playback + Barge-in。
-第一版 UI = Terminal（状态 + 对话流 + 延迟数字，格式见 `06` §2）。
+第一版 UI = Terminal（格式见 `06` §2）；2026-09-22 起 `frontend/` 浏览器 demo
+已接真管线，WS 契约见 `FRONTEND_DEMO_DESIGN.md` §4，二者并存。
 
 ## Components and control flow
 
