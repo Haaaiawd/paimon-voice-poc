@@ -40,8 +40,9 @@ from .base import TTSError, TTSProvider
 
 DEFAULT_MODEL = "cosyvoice-v3-flash"  # v3.5-flash 本账号 418，勿用
 DEFAULT_WS_URL = "wss://dashscope.aliyuncs.com/api-ws/v1/inference"
-# chinese-tts-eval C5：longanhuan_v3 欢脱元气女，贴近派蒙；支持 Instruct 情感指令
-DEFAULT_VOICE = "longanhuan_v3"
+# chinese-tts-eval C5：longhuhu_v3 天真烂漫女童，最贴派蒙（实测首音 0.83s
+# 快于 longanhuan_v3）；支持 Instruct 情感指令。TTS_VOICE 环境变量可换。
+DEFAULT_VOICE = "longhuhu_v3"
 
 # dashscope SDK Request.get_start_request 同款 parameters 面。
 DEFAULT_PARAMETERS: Mapping[str, Any] = {

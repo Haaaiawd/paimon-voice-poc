@@ -17,7 +17,7 @@ PC 本地的实时中文语音 Companion 原型——角色是**派蒙**。
 
 - 判停：VAD 0.2s + Smart Turn 模型判定，中文误判兜底 **1.2s**（实测 ~0.85s）
 - LLM：默认 `qwen-flash`（同负载实测 TTFT ~609ms），`QWEN_MODEL` 可换
-- TTS：默认 `cosyvoice-v3-flash` / `longanhuan_v3`
+- TTS：默认 `cosyvoice-v3-flash` / `longhuhu_v3`（天真烂漫女童），`TTS_PROVIDER`/`TTS_VOICE` 可换
 - 打断：全双工，用户开口即停播（实测 0.1–0.3ms）
 - 前端：Vite + React + Blackchalk 手绘风 demo，文字/语音双模
 
@@ -31,13 +31,21 @@ PC 本地的实时中文语音 Companion 原型——角色是**派蒙**。
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env        # 填 DASHSCOPE_API_KEY；其余可选
+```
 
-# 后端（WS gateway）
-python -m runtime.ws_gateway                    # 默认 127.0.0.1:8765
+Windows 一键启动（后端 8766 + 前端 5173）：
 
-# 前端（另开一个终端）
+```bat
+start.bat
+```
+
+或手动两个终端：
+
+```bash
+python -m runtime.ws_gateway --port 8766        # 后端 WS gateway
+
 cd frontend && npm ci
-VITE_BACKEND=ws npm run dev                     # http://localhost:5173
+VITE_BACKEND=ws VITE_WS_URL=ws://127.0.0.1:8766/ws/chat npm run dev
 ```
 
 `.env` 不入库。本机走代理时给 `*.aliyuncs.com` / `api.fish.audio`

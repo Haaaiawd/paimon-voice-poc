@@ -181,6 +181,70 @@ async def test_json_string_reply_falls_back_to_speech_and_tts(tmp_path):
     assert player.written_seconds > 0
 
 
+# ---------------------------------------------------------------- 自听回声
+
+
+def _seed_assistant_speech(pipeline, text: str, audio_s: float = 3.0) -> None:
+    """预置一条"派蒙刚说过"的封账 utterance（模拟扬声器播过的内容）。"""
+    ctx = pipeline.core.context
+    u = ctx.begin_utterance()
+    u.add_generated(text)
+    u.add_segment(text, audio_s)
+    ctx.seal_current()
+
+
+async def test_self_echo_turn_is_dropped(tmp_path):
+    """ASR 收回派蒙自己的声音 → 整轮丢弃：不进历史、不发 LLM、收回 IDLE。"""
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, metrics, player, tts, llm = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="你看那里有一只穿着皮衣的奶龙",
+        turn=ScriptedTurn(release_on_final=True),
+        tmp_path=tmp_path,
+    )
+    ctx = pipeline.core.context
+    _seed_assistant_speech(pipeline, "你看那里有一只穿着皮衣的奶龙。")
+
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    assert not llm.requests  # 回声轮次不发给 LLM
+    assert not any(e["role"] == "user" for e in ctx.heard_history)
+    closed = [r for r in metrics.records if r.closed]
+    assert closed and closed[-1].stop_reason == "self_echo"
+    assert pipeline.core.state == ConversationState.IDLE
+
+
+async def test_non_echo_turn_after_speech_still_responds(tmp_path):
+    """真用户发言与派蒙刚说的话不相似 → 回声闸门不误伤。"""
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, metrics, player, tts, llm = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="今天天气怎么样",
+        turn=ScriptedTurn(release_on_final=True),
+        tmp_path=tmp_path,
+    )
+    ctx = pipeline.core.context
+    _seed_assistant_speech(pipeline, "你看那里有一只穿着皮衣的奶龙。")
+
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    assert llm.requests  # 正常发给 LLM
+    assert any(e["role"] == "user" for e in ctx.heard_history)
+    assert metrics.records[-1].reply_speech == REPLY["speech"]
+
+
 # ---------------------------------------------------------------- 投机分支
 
 

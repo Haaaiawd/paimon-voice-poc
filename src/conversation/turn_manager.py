@@ -165,7 +165,11 @@ class TurnManager:
         if can_respond:
             self._emit(
                 EventType.AGENT_CAN_RESPOND,
-                {"turn_id": self._turn_id, "text": self._last_text},
+                {
+                    "turn_id": self._turn_id,
+                    "text": self._last_text,
+                    "source": event.payload.get("source"),
+                },
             )
 
     def _open_turn(self, payload: dict) -> None:

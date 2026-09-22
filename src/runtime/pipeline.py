@@ -28,11 +28,17 @@ import asyncio
 import re
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Callable
+from difflib import SequenceMatcher
 from typing import Any
 
 from character.agent import CharacterAgent, is_noop
 from conversation.core import ConversationCore
-from conversation.events import Event, EventBus, EventType
+from conversation.events import (
+    Event,
+    EventBus,
+    EventType,
+    TEXT_TURN_SOURCE,
+)
 from conversation.state_machine import ConversationState
 from metrics.latency import LatencyLog
 from providers.llm.base import parse_agent_reply
@@ -47,6 +53,17 @@ _SEC_PER_CHAR_ESTIMATE = 0.22
 
 #: ClauseChunker 的语义边界字符（中英文标点 + 换行）。
 _BOUNDARY_CHARS = frozenset("，。！？；：、…—,.!?;:\n")
+
+#: 自听回声判定（软 AEC）：扬声器外放时麦克风收回派蒙自己的声音，
+#: ASR 转写与最近 assistant 播出文本高度重合 → 整轮丢弃。
+_ECHO_SIMILARITY = 0.6
+_ECHO_MIN_CHARS = 4  # 短于此不判定（"嗯/好"巧合率太高）
+_ECHO_LOOKBACK = 3  # 只比对最近 N 条 utterance（回声是即时的）
+
+
+def _norm_speech(text: str) -> str:
+    """回声比对归一化：只留字母/数字/汉字，忽略标点、空白、大小写。"""
+    return "".join(ch for ch in text.lower() if ch.isalnum())
 
 
 class SpeechFieldExtractor:
@@ -438,9 +455,35 @@ class VoicePipeline:
             EventType.PROMPT_PREBUILT, {"turn_id": tm.turn_id, "text": text}
         )
 
+    def _is_self_echo(self, text: str) -> bool:
+        """ASR 文本是否即派蒙自己的扬声器输出被收了回来。
+
+        无硬件 AEC 的外放场景兜底；比对"已交付 TTS"的文本
+        （spoken_text——只有发出去合成过的才可能被听见）。
+        戴耳机/有 AEC 时永不触发。
+        """
+        norm = _norm_speech(text)
+        if len(norm) < _ECHO_MIN_CHARS:
+            return False
+        for u in self.core.context.utterances[-_ECHO_LOOKBACK:]:
+            cand = _norm_speech(u.spoken_text)
+            if len(cand) < _ECHO_MIN_CHARS:
+                continue
+            if norm in cand or cand in norm:
+                return True
+            if SequenceMatcher(None, norm, cand).ratio() >= _ECHO_SIMILARITY:
+                return True
+        return False
+
     def _on_turn_complete(self, event: Event) -> None:
+        text = event.payload.get("text", "")
+        if (
+            event.payload.get("source") != TEXT_TURN_SOURCE
+            and self._is_self_echo(text)
+        ):
+            return  # 自听回声：不进 heard history，避免派蒙学自己说话
         self.core.context.record_user_turn(
-            event.payload.get("text", ""),
+            text,
             turn_id=event.payload.get("turn_id"),
         )
 
@@ -448,6 +491,19 @@ class VoicePipeline:
 
     def _on_can_respond(self, event: Event) -> None:
         assert self._loop is not None
+        if (
+            event.payload.get("source") != TEXT_TURN_SOURCE
+            and self._is_self_echo(event.payload.get("text", ""))
+        ):
+            # 回声轮次不响应。若 USER_TURN_COMPLETE 已把状态机推进
+            # THINKING，发 PLAYBACK_STOPPED 收回 IDLE（SPEAKING 中该
+            # 事件本被状态机忽略，且 utterance 未封账，无需回收）。
+            if self.core.state is ConversationState.THINKING:
+                self.bus.publish(
+                    EventType.PLAYBACK_STOPPED,
+                    {"reason": "self_echo", "played_s": 0.0},
+                )
+            return
         if self._respond_task is not None and not self._respond_task.done():
             self._respond_task.cancel()  # 新轮次取代在途响应（防御）
         self._respond_task = self._loop.create_task(
