@@ -188,7 +188,7 @@ class TestSystemPrompt:
         无记忆不占行；"怎么用"的规则在语气行常驻。"""
         default = build_system_prompt(PAIMON, BehaviorConstraints(max_sentences=2))
         assert "记忆：" not in default
-        assert "别主动翻旧账" in default  # 使用规则始终在场
+        assert "别往旧事上拐" in default  # 使用规则始终在场
         with_mem = build_system_prompt(
             PAIMON, BehaviorConstraints(max_sentences=2), memory="共同记忆·测试"
         )
