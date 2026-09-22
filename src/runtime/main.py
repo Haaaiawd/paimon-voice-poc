@@ -101,6 +101,7 @@ def _load_env() -> dict[str, str]:
         "FISH_API_KEY",
         "DEEPSEEK_API_KEY",
         "OPENAI_COMPATIBLE_URL",
+        "DASHSCOPE_WS_URL",
         "QWEN_MODEL",
     ):
         if k in os.environ:
@@ -167,16 +168,19 @@ def _build_real(args, env):
         raise SystemExit(
             "缺少 API key：" + "；".join(missing) + "。填 .env 或用 --mock 演示。"
         )
+    ws_url = env.get("DASHSCOPE_WS_URL")  # 可覆盖默认 api-ws 端点（relay/私有网关）
     vad = SileroVADAdapter()
     turn = SmartTurnAdapter(wait_for_transcript=True)
-    asr = DashScopeASR(api_key=dash_key)
+    asr = DashScopeASR(api_key=dash_key, **({"url": ws_url} if ws_url else {}))
     llm = OpenAICompatibleLLM(
         base_url=llm_base, api_key=dash_key, model=llm_model
     )
     if fish_key:
         tts = FishAudioTTS(api_key=fish_key)
     else:
-        tts = BailianCosyVoiceTTS(api_key=dash_key)
+        tts = BailianCosyVoiceTTS(
+            api_key=dash_key, **({"url": ws_url} if ws_url else {})
+        )
     if args.file is not None:
         audio = pcm_file_frames(args.file)
     else:
