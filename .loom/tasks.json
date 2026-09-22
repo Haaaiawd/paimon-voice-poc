@@ -659,12 +659,12 @@
         {
           "criterion": "给定 context，LLM 稳定输出符合 schema 的 JSON（emotion ∈ doc 05 §8 标签集）",
           "verify_by": "pytest tests/test_persona.py 断言 schema 与标签合法性",
-          "evidence": ""
+          "evidence": "TestStructuredReply 8 项断言（3 种 context 参数化 + 未知标签降级 neutral + fence 容忍 + 空 speech=NOOP + SILENCED 闸口零 HTTP + response_format=json_object）；TestLiveQwen 对真实 qwen-turbo 4 context 全部解析为合法 AgentReply，emotion 全部 ∈ §8 标签集（teasing×2/excited/neutral），speech 非空（initiative 场景合法返回空=NOOP）。"
         },
         {
           "criterion": "system prompt 只含身份/语气/长度/行为限制，不写角色小说",
           "verify_by": "review src/character/ prompt 模板，对照 doc 05 §10",
-          "evidence": ""
+          "evidence": "build_system_prompt 仅由六槽位规则行拼装（身份/语气/长度/输出契约/被打断/主动开口+SILENCED 防御行）；TestSystemPrompt 断言逐行前缀 ∈ 允许槽位白名单、全长 <600 字符 ≤8 行、单行 <200 字符、动态槽位仅在约束命中时出现——对照 doc 05 §10 无叙事段落。"
         }
       ],
       "done_when": [],
@@ -690,15 +690,34 @@
       "covers": [
         "DLV-004"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pytest tests/test_persona.py: 26 项（25 passed + 1 conditional live skip）；全仓 pytest 137 passed / 3 skipped / 0 failed。",
+        "真实端点佐证（qwen-turbo, compatible-mode 直连）: 4 种 context（普通轮/被打断轮/讲笑话/主动开口冷场）全部返回 schema 合法 AgentReply；emotion ∈ {teasing, excited, neutral} 均在 doc 05 §8 标签集；initiative 冷场场景实测 speech='' 即 NOOP（闭嘴能力端到端成立）。",
+        "产出: src/character/{persona,behavior_policy,prompt,agent}.py —— Persona(身份/气质/长度基线/§8 情绪标签集)、BehaviorPolicy(§3-§7 规则面: 长度/被打断/SILENCED 闸口/initiative-NOOP/显式覆盖)、build_system_prompt(§10 六槽位)、CharacterAgent(§5 输入→§6 AgentReply)。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "给定 context，LLM 稳定输出符合 schema 的 JSON（emotion ∈ doc 05 §8 标签集）",
+              "evidence": "TestStructuredReply 8 项断言（3 种 context 参数化 + 未知标签降级 neutral + fence 容忍 + 空 speech=NOOP + SILENCED 闸口零 HTTP + response_format=json_object）；TestLiveQwen 对真实 qwen-turbo 4 context 全部解析为合法 AgentReply，emotion 全部 ∈ §8 标签集（teasing×2/excited/neutral），speech 非空（initiative 场景合法返回空=NOOP）。"
+            },
+            {
+              "criterion": "system prompt 只含身份/语气/长度/行为限制，不写角色小说",
+              "evidence": "build_system_prompt 仅由六槽位规则行拼装（身份/语气/长度/输出契约/被打断/主动开口+SILENCED 防御行）；TestSystemPrompt 断言逐行前缀 ∈ 允许槽位白名单、全长 <600 字符 ≤8 行、单行 <200 字符、动态槽位仅在约束命中时出现——对照 doc 05 §10 无叙事段落。"
+            }
+          ],
+          "at": "2026-09-22T01:50:14.467Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:08.046Z"
+      "updated_at": "2026-09-22T01:50:14.467Z",
+      "completed_at": "2026-09-22T01:50:14.467Z"
     },
     {
       "id": "TASK-010",

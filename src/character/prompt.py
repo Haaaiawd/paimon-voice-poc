@@ -1,0 +1,105 @@
+"""System prompt 与 messages 构造（doc 05 §10 / doc 03 §3、§5）。
+
+doc 05 §10：System Prompt 不写角色小说，只提供六个槽位——
+身份 / 语气 / 长度 / 输出契约 / 当前是否被打断 / 当前是否允许主动发言
+（SILENCED 为防御行，正常链路在 agent 层已被闸口拦下、不会到这里）。
+`build_system_prompt` 的每个槽位是一条独立规则行，无叙事段落。
+
+doc 03 §5 的 agent input 经 `build_messages` 渲染：recent_heard_history
+进 user/assistant 角色位（heard 面，被打断轮次带 —— 截断标记），
+本轮输入按 §3 的键值块收进最后一条 user 消息——interruption_context
+原样呈现 assistant_heard / generated_but_not_heard / event，
+模型不许假设用户听到了未播出部分（turn-taking C5）。
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from providers.llm.base import ChatMessage
+
+from .behavior_policy import BehaviorConstraints
+from .persona import EMOTION_TAG_ORDER, Persona
+
+#: doc 03 §3 的截断标记（与 conversation.context 同一约定）。
+TRUNCATION_MARK = "——"
+
+
+def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> str:
+    """渲染六个槽位的 system prompt；每个槽位一条规则行。"""
+    lines = [
+        # 身份
+        f"你是{persona.identity}。",
+        # 语气
+        f"语气：{'；'.join(persona.tone)}。",
+        # 长度
+        (
+            f"长度：用户在要求解释，可以答完整，但仍控制在 "
+            f"{constraints.max_sentences} 句以内。"
+            if constraints.long_answer
+            else f"长度：{constraints.max_sentences} 句以内的短句，口语优先，不长篇解释。"
+        ),
+        # 输出契约（doc 03 §6 schema；emotion 枚举 = doc 05 §8）
+        '只输出一个 JSON 对象 {"speech": string, "emotion": '
+        + "|".join(EMOTION_TAG_ORDER)
+        + ' 之一, "energy": 0到1的小数, "should_continue": bool}；'
+        "不要输出任何其他文字。无话可说时 speech 为空字符串。",
+    ]
+    # 当前行为限制（动态槽位，命中才渲染）
+    if constraints.was_interrupted:
+        lines.append(
+            "你上一句被打断了：不要自动补完原句，按上下文放弃、"
+            "换一句、认怂，或吐槽一句。"
+        )
+    if constraints.is_initiative:
+        lines.append("这次是你主动开口：没有值得说的就让 speech 为空。")
+    if not constraints.may_speak:
+        lines.append("用户要求你安静：speech 返回空字符串。")
+    return "\n".join(lines)
+
+
+def render_turn_input(agent_input: Mapping[str, Any]) -> str:
+    """doc 03 §5 本轮输入 → 键值行块（最后一条 user 消息的正文）。"""
+    lines = [f"state: {agent_input.get('state')}"]
+    silence_ms = agent_input.get("silence_duration_ms")
+    if silence_ms:
+        lines.append(f"silence_duration_ms: {int(silence_ms)}")
+    reason = agent_input.get("initiative_reason")
+    if reason is not None:
+        lines.append(f'initiative_reason: "{reason}"')
+    interruption = agent_input.get("interruption_context")
+    if interruption:
+        # doc 03 §3 原样四行：heard / not_heard / event / user
+        lines.append(
+            f'assistant_heard: "{interruption.get("assistant_heard", "")}"'
+        )
+        lines.append(
+            'assistant_generated_but_not_heard: '
+            f'"{interruption.get("assistant_generated_but_not_heard", "")}"'
+        )
+        lines.append(f"event: {interruption.get('event')}")
+    user_text = str(agent_input.get("last_user_text") or "")
+    lines.append(f'user: "{user_text}"')
+    return "\n".join(lines)
+
+
+def build_messages(
+    persona: Persona,
+    agent_input: Mapping[str, Any],
+    constraints: BehaviorConstraints,
+) -> list[ChatMessage]:
+    """system + heard history（角色位）+ 本轮输入块。"""
+    messages: list[ChatMessage] = [
+        {"role": "system", "content": build_system_prompt(persona, constraints)}
+    ]
+    for entry in agent_input.get("recent_heard_history") or ():
+        text = str(entry.get("text") or "")
+        if not text:
+            continue
+        # heard 面历史：被打断的 assistant 轮次补截断标记
+        if entry.get("role") == "assistant" and entry.get("interrupted"):
+            text += TRUNCATION_MARK
+        messages.append({"role": str(entry.get("role")), "content": text})
+    messages.append({"role": "user", "content": render_turn_input(agent_input)})
+    return messages

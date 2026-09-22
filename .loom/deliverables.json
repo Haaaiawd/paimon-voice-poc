@@ -45,7 +45,7 @@
       "slug": "paimon-persona",
       "title": "派蒙人格：Behavior Policy、情绪标签、结构化 LLM 输出",
       "kind": "feature",
-      "notes": "",
+      "notes": "TASK-009 完成(2026-09-22)：src/character/ 落 Persona（身份/气质/长度基线/doc 05 §8 情绪标签集）+ BehaviorPolicy（§3-§7 规则面：短句默认、解释请求放宽、被打断标记、SILENCED 闸口、initiative-NOOP、显式覆盖）+ prompt 六槽位渲染（§10，无角色小说）+ CharacterAgent（doc 03 §5 输入→§6 AgentReply，speech 空=NOOP）。验收：pytest tests/test_persona.py 25 passed；真实 qwen-turbo 4 context 全部 schema 合法（emotion∈§8 标签集），initiative 冷场实测返回 NOOP。注：当前 .env 的 sk-ws-* key 为 workspace realtime 专用，chat/completions 拒收——live 测试自动 skip，实测用标准 key 完成。全仓 pytest 137 passed / 3 skipped。",
       "covered_by": [
         "TASK-009"
       ],
