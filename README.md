@@ -45,7 +45,7 @@ start.bat
 python -m runtime.ws_gateway --port 8766        # 后端 WS gateway
 
 cd frontend && npm ci
-VITE_BACKEND=ws VITE_WS_URL=ws://localhost:8766/ws/chat npm run dev
+VITE_BACKEND=ws VITE_WS_URL=ws://127.0.0.1:8766/ws/chat npm run dev
 ```
 
 `.env` 不入库。本机走代理时给 `*.aliyuncs.com` / `api.fish.audio`

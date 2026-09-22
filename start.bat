@@ -24,7 +24,7 @@ if not exist node_modules (
   call npm ci
 )
 echo [paimon] starting frontend http://localhost:5173
-start "paimon-frontend" cmd /k "set VITE_BACKEND=ws& set VITE_WS_URL=ws://localhost:8766/ws/chat& npm run dev -- --host"
+start "paimon-frontend" cmd /k "set VITE_BACKEND=ws& set VITE_WS_URL=ws://127.0.0.1:8766/ws/chat& npm run dev -- --host"
 cd /d %~dp0
 
 echo.
