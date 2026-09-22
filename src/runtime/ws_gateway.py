@@ -42,7 +42,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from character.agent import CharacterAgent
 from conversation.core import ConversationCore
-from conversation.events import Event, EventType
+from conversation.events import Event, EventType, TEXT_TURN_SOURCE
 from metrics.latency import LatencyLog
 from providers.llm.base import LLMProvider
 from runtime.pipeline import SpeechFieldExtractor, VoicePipeline
@@ -70,8 +70,7 @@ _PROJECTED_EVENTS = (
     EventType.PIPELINE_ERROR,
 )
 
-#: 文本注入的 TURN_COMPLETE 来源标记（latency log 的 turn_source 可见）。
-TEXT_TURN_SOURCE = "text_input"
+
 
 #: POST /chat 旁路等待 reply.final 的上限。
 HTTP_REPLY_TIMEOUT_S = 30.0

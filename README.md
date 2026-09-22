@@ -31,13 +31,21 @@ PC 本地的实时中文语音 Companion 原型——角色是**派蒙**。
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env        # 填 DASHSCOPE_API_KEY；其余可选
+```
 
-# 后端（WS gateway）
-python -m runtime.ws_gateway                    # 默认 127.0.0.1:8765
+Windows 一键启动（后端 8766 + 前端 5173）：
 
-# 前端（另开一个终端）
+```bat
+start.bat
+```
+
+或手动两个终端：
+
+```bash
+python -m runtime.ws_gateway --port 8766        # 后端 WS gateway
+
 cd frontend && npm ci
-VITE_BACKEND=ws npm run dev                     # http://localhost:5173
+VITE_BACKEND=ws VITE_WS_URL=ws://localhost:8766/ws/chat npm run dev
 ```
 
 `.env` 不入库。本机走代理时给 `*.aliyuncs.com` / `api.fish.audio`

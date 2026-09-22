@@ -80,6 +80,10 @@ TURN_MANAGER_OUTPUTS = frozenset(
     }
 )
 
+#: 文本注入轮次的 TURN_COMPLETE 来源标记（latency log 的 turn_source
+#: 可见）；文字输入不可能是声学回声，pipeline 回声守卫据此豁免。
+TEXT_TURN_SOURCE = "text_input"
+
 
 @dataclass
 class Event:

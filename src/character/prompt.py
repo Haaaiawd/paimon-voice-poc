@@ -37,7 +37,8 @@ def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> s
         # ── environment adaptation：实时语音约束 ──
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"
-        "不要列表、markdown、emoji、括号注释。",
+        "不要列表、markdown、emoji、括号注释；"
+        "除非对方明确要求，否则不复读对方原话，没听清就吐槽没听清。",
         (
             f"长度：用户在要求解释，可以答完整，但仍控制在 "
             f"{constraints.max_sentences} 句以内。"
