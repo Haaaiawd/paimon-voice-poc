@@ -263,13 +263,31 @@ class GatewayRuntime:
         agent = CharacterAgent(llm)
         self._delta_sinks: set[Callable[[str], None]] = set()
         tapped = _SpeechDeltaTap(agent, self._emit_delta)
-        memory_pack = load_memory(env.get("MEMORY_DIR") or (ROOT / "memory"))
+        memory_dir = env.get("MEMORY_DIR") or (ROOT / "memory")
+        memory_pack = load_memory(memory_dir)
+        # MEMORY_PROVIDER=mem0 → 向量检索档（记忆槽位由召回结果填充，
+        # fixture 内容 seed 进 mem0）；否则 fixture 摘要常驻 system prompt。
+        memory_provider = None
+        memory_text = memory_pack.text
+        if (env.get("MEMORY_PROVIDER") or "").lower() == "mem0":
+            from memory.mem0_provider import Mem0MemoryProvider
+
+            memory_provider = Mem0MemoryProvider(
+                api_key=env["DASHSCOPE_API_KEY"],
+                base_url=env.get("OPENAI_COMPATIBLE_URL")
+                or "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                llm_model=env.get("QWEN_MODEL") or "qwen-flash",
+                embed_model=env.get("MEM0_EMBED_MODEL") or "text-embedding-v3",
+                persist_dir=env.get("MEM0_DIR") or (ROOT / "data" / "mem0"),
+            )
+            memory_provider.seed_fixture(memory_dir)
+            memory_text = ""
         self.core = ConversationCore(
             playback=self.player,
             tts=tts,
             min_barge_in_s=args.min_barge_in_s,
-            memory_text=memory_pack.text,
-            memory_triggers=memory_pack.triggers,
+            memory_text=memory_text,
+            memory_provider=memory_provider,
         )
         self.metrics = LatencyLog(self.core.bus, outdir=args.outdir)
         self.pipeline = VoicePipeline(

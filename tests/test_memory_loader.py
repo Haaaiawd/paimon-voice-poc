@@ -1,11 +1,11 @@
-"""记忆 fixture 注入：loader 渲染 + 触发式门控 + prompt 透传。"""
+"""记忆层：fixture 装载 + system prompt 记忆槽位注入 + mem0 provider。"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from character.prompt import render_turn_input
+from character.agent import CharacterAgent
 from conversation import ConversationCore
 from memory.loader import load_memory
 
@@ -19,10 +19,8 @@ def test_repo_fixture_loads_as_pack():
     assert "第1天" in pack.text and "第7天" in pack.text
     assert "梧桐" in pack.text
     assert len(pack.text) < 3000
-    # 触发词：结构锚点（城市/日标题/事件地点）+ fixture 自声明 triggers
+    # 触发词是 pack 元数据（fixture triggers + 结构锚点），供种子/检索用
     assert "南京" in pack.triggers
-    assert "鸡鸣寺" in pack.triggers
-    assert "旅行" in pack.triggers
 
 
 def test_missing_dir_returns_empty(tmp_path):
@@ -40,45 +38,45 @@ def test_malformed_json_skipped(tmp_path):
     assert "测试行" in pack.text
 
 
-def test_memory_gated_by_trigger():
-    """不命中触发词不下发；命中后挂住几轮供追问。"""
-    core = ConversationCore(
-        memory_text="共同记忆·测试", memory_triggers=frozenset({"南京"})
-    )
-    ctx = core.context
-    # 无关输入：不下发
-    assert (
-        ctx.build_agent_input(state=core.state, last_user_text="你好")["memory"]
-        is None
-    )
-    # 命中：下发且挂住
-    hit = ctx.build_agent_input(state=core.state, last_user_text="南京好玩吗")
-    assert hit["memory"] == "共同记忆·测试"
-    # 追问不带关键词也继续下发（hot 窗口 3 轮）
-    for _ in range(2):
-        follow = ctx.build_agent_input(
-            state=core.state, last_user_text="那吃的呢"
+def test_memory_always_in_agent_input():
+    """常驻注入：记忆是 system prompt stable core 的一部分，
+    不做机械门控——"什么时候用"由 prompt 规则管。"""
+    core = ConversationCore(memory_text="共同记忆·测试")
+    for text in ("你好", "南京好玩吗", ""):
+        payload = core.context.build_agent_input(
+            state=core.state, last_user_text=text
         )
-        assert follow["memory"] == "共同记忆·测试"
-    # 窗口耗尽：回到不下发
-    cold = ctx.build_agent_input(state=core.state, last_user_text="换个话题")
-    assert cold["memory"] is None
+        assert payload["memory"] == "共同记忆·测试"
 
 
-def test_memory_renders_in_turn_input_before_user():
-    core = ConversationCore(
-        memory_text="共同记忆·测试", memory_triggers=frozenset({"南京"})
-    )
+def test_memory_lands_in_system_prompt_not_turn_input():
+    """记忆渲染进 system 消息（与人格同层），不进本轮输入块。"""
+    from providers.llm.base import LLMProvider
+
+    class _LLM(LLMProvider):
+        def stream_reply(self, messages, **_):
+            yield ""
+            return
+
+        async def complete_structured(self, messages, **_):
+            raise NotImplementedError
+
+        async def close(self) -> None:
+            pass
+
+    core = ConversationCore(memory_text="共同记忆·测试")
+    agent = CharacterAgent(_LLM())
     payload = core.context.build_agent_input(
-        state=core.state, last_user_text="还记得南京吗"
+        state=core.state, last_user_text="随便聊聊"
     )
-    rendered = render_turn_input(payload)
-    assert 'memory: "共同记忆·测试"' in rendered
-    assert rendered.index("memory:") < rendered.index('user:')
+    messages = agent.build_messages(payload)
+    assert messages[0]["role"] == "system"
+    assert "记忆：共同记忆·测试" in messages[0]["content"]
+    # 本轮输入块里不再出现 memory 行
+    assert "memory:" not in messages[-1]["content"]
 
 
-def test_no_memory_no_line():
+def test_no_memory_no_slot():
     core = ConversationCore()
     payload = core.context.build_agent_input(state=core.state)
     assert payload["memory"] is None
-    assert "memory:" not in render_turn_input(payload)

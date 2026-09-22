@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from memory.provider import MemoryProvider
 
 from .context import ContextManager
 from .events import Event, EventBus, EventType
@@ -37,7 +40,7 @@ class ConversationCore:
         min_barge_in_s: float = 0.0,
         initiative_config: InitiativeConfig | None = None,
         memory_text: str = "",
-        memory_triggers: frozenset[str] = frozenset(),
+        memory_provider: "MemoryProvider | None" = None,
         now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self.bus = bus or EventBus(now_fn=now_fn)
@@ -48,8 +51,10 @@ class ConversationCore:
         self.context = ContextManager(
             self.bus,
             memory_text=memory_text,
-            memory_triggers=memory_triggers,
         )
+        #: 可选记忆 provider（mem0 等）：pipeline 每轮 recall/record。
+        #: 静态 fixture 摘要与检索结果共用 system prompt 记忆槽位。
+        self.memory_provider = memory_provider
         self.interruption = InterruptionManager(
             self.bus,
             self.machine,

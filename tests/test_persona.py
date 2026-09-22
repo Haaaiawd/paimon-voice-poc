@@ -99,10 +99,11 @@ class TestSystemPrompt:
     """acceptance 2：prompt 只含分层槽位（stable core/环境适配/本轮限制），
     不写角色小说。"""
 
-    #: 允许出现的槽位行前缀（身份/语气/语音/长度/输出契约/行为限制）。
+    #: 允许出现的槽位行前缀（身份/语气/记忆/语音/长度/输出契约/行为限制）。
     SLOT_PREFIXES = (
         "你是",
         "语气：",
+        "记忆：",
         "语音：",
         "长度：",
         "只输出",
@@ -134,6 +135,8 @@ class TestSystemPrompt:
         assert len(prompt) < 600
         assert len(prompt.splitlines()) <= 8
         for line in prompt.splitlines():
+            if line.startswith("记忆："):
+                continue  # 数据载荷行，长度由记忆内容决定
             assert len(line) < 200  # 无段落式描写
 
     def test_static_slots_content(self):
@@ -178,6 +181,17 @@ class TestSystemPrompt:
             BehaviorConstraints(max_sentences=6, long_answer=True),
         )
         assert "要求解释" in prompt and "6 句" in prompt
+
+    def test_memory_slot_conditional(self):
+        """记忆槽位是 stable core 的数据层：有记忆渲染 记忆： 行，
+        无记忆不占行；"怎么用"的规则在语气行常驻。"""
+        default = build_system_prompt(PAIMON, BehaviorConstraints(max_sentences=2))
+        assert "记忆：" not in default
+        assert "别主动翻旧账" in default  # 使用规则始终在场
+        with_mem = build_system_prompt(
+            PAIMON, BehaviorConstraints(max_sentences=2), memory="共同记忆·测试"
+        )
+        assert "记忆：共同记忆·测试" in with_mem
 
 
 class TestBehaviorPolicy:

@@ -28,13 +28,20 @@ from .persona import EMOTION_TAG_ORDER, Persona
 TRUNCATION_MARK = "——"
 
 
-def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> str:
+def build_system_prompt(
+    persona: Persona,
+    constraints: BehaviorConstraints,
+    memory: str = "",
+) -> str:
     """渲染分层 system prompt；每个槽位一条规则行。"""
     lines = [
         # ── stable core：身份与人格价值 ──
         f"你是{persona.identity}。",
         f"语气：{'；'.join(persona.tone)}；吐槽要准，但别真伤人；"
         "专注当下——记忆只在对方提起或很贴切时才用，别主动翻旧账。",
+        # 记忆槽位：stable core 数据层，与人格并排常驻；规则在语气行，
+        # 这里是"她记得什么"而不是"怎么用"。无记忆配置则不渲染。
+        *([f"记忆：{memory}"] if memory else []),
         # ── environment adaptation：实时语音约束 ──
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"
@@ -90,9 +97,6 @@ def render_turn_input(agent_input: Mapping[str, Any]) -> str:
             f'"{interruption.get("assistant_generated_but_not_heard", "")}"'
         )
         lines.append(f"event: {interruption.get('event')}")
-    memory = agent_input.get("memory")
-    if memory:
-        lines.append(f'memory: "{memory}"')
     user_text = str(agent_input.get("last_user_text") or "")
     lines.append(f'user: "{user_text}"')
     return "\n".join(lines)
@@ -105,7 +109,12 @@ def build_messages(
 ) -> list[ChatMessage]:
     """system + heard history（角色位）+ 本轮输入块。"""
     messages: list[ChatMessage] = [
-        {"role": "system", "content": build_system_prompt(persona, constraints)}
+        {
+            "role": "system",
+            "content": build_system_prompt(
+                persona, constraints, memory=str(agent_input.get("memory") or "")
+            ),
+        }
     ]
     for entry in agent_input.get("recent_heard_history") or ():
         text = str(entry.get("text") or "")

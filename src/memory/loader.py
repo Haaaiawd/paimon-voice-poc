@@ -1,10 +1,9 @@
-"""memory/*.json fixture → 紧凑记忆摘要 + 触发词表，按需注入 agent input。
+"""memory/*.json fixture → 紧凑记忆摘要 + 回忆线索元数据。
 
-MVP 语义：fixture 是"派蒙已经记得的事"。模仿人类回忆——记忆是后台
-资源而不是常驻 prompt：只有本轮用户输入命中触发词（地名/事件/回忆
-词）时才把摘要放进输入，且命中后挂住 MEMORY_HOT_TURNS 轮供追问；
-平时不注入，让模型专注当下。真实检索式记忆系统见
-.loom/design/MEMORY_SYSTEM_DESIGN.md，本 loader 只解决"全量常驻过重"。
+MVP 语义：fixture 是"派蒙已经记得的事"——摘要常驻 system prompt
+记忆槽位（与人格同层），"什么时候用"由 prompt 规则约束。
+pack.triggers 是数据侧声明的回忆线索元数据，供 mem0 种子/检索参考；
+真实检索式记忆见 memory.mem0_provider（MEMORY_PROVIDER=mem0）。
 """
 
 from __future__ import annotations

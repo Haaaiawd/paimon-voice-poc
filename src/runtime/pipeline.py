@@ -556,12 +556,26 @@ class VoicePipeline:
         )
 
     async def _respond(self, turn_id: int, text: str) -> None:
-        _, messages, spec = self._resolve_prompt(turn_id, text)
-        await self._speak(
+        agent_input, messages, spec = self._resolve_prompt(turn_id, text)
+        # 记忆 provider（可选）：检索结果覆盖进 agent_input.memory，
+        # 与静态 fixture 摘要共用 system prompt 记忆槽位。
+        provider = self.core.memory_provider
+        if provider is not None:
+            try:
+                recalled = await provider.recall(text)
+            except Exception:
+                recalled = None
+            if recalled != agent_input.get("memory"):
+                agent_input["memory"] = recalled
+                messages = self._agent.build_messages(agent_input)
+        utterance = await self._speak(
             turn_id,
             messages,
             llm_payload={"turn_id": turn_id, "speculative": spec},
         )
+        # 轮末写回：只记"实际交付"的语音文本（heard 面）
+        if provider is not None and utterance is not None and text.strip():
+            provider.record(text, utterance.spoken_text)
 
     async def _respond_initiative(self, payload: dict[str, Any]) -> None:
         """主动开口：initiative_reason 进 agent input（BehaviorPolicy 据此
@@ -585,8 +599,10 @@ class VoicePipeline:
         messages: list,
         *,
         llm_payload: dict[str, Any],
-    ) -> None:
-        """共用响应体：LLM 流 → speech 抽取 → chunker → TTS → 播放 → 封账。"""
+    ):
+        """共用响应体：LLM 流 → speech 抽取 → chunker → TTS → 播放 → 封账。
+
+        返回封账后的 utterance（供记忆写回取实际交付文本）。"""
         ctx = self.core.context
         utterance = ctx.begin_utterance()
         # 复读硬闸：归一化后与上一条 assistant 回复逐字重合的分句不送 TTS——
@@ -729,6 +745,7 @@ class VoicePipeline:
             if audio_task is not None and not audio_task.done():
                 audio_task.cancel()
                 await asyncio.gather(audio_task, return_exceptions=True)
+        return utterance
 
     async def _finish_playback(self, utterance, *, reason: str) -> None:
         """等播放 buffer 排空后发 PLAYBACK_STOPPED 封账本轮。"""

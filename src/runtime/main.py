@@ -246,13 +246,29 @@ async def _run(args) -> int:
     player = _build_player(args, tts)
     agent = CharacterAgent(llm)
 
-    pack = load_memory(env.get("MEMORY_DIR") or (ROOT / "memory"))
+    memory_dir = env.get("MEMORY_DIR") or (ROOT / "memory")
+    pack = load_memory(memory_dir)
+    memory_provider = None
+    memory_text = pack.text
+    if (env.get("MEMORY_PROVIDER") or "").lower() == "mem0":
+        from memory.mem0_provider import Mem0MemoryProvider
+
+        memory_provider = Mem0MemoryProvider(
+            api_key=env["DASHSCOPE_API_KEY"],
+            base_url=env.get("OPENAI_COMPATIBLE_URL")
+            or "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            llm_model=env.get("QWEN_MODEL") or "qwen-flash",
+            embed_model=env.get("MEM0_EMBED_MODEL") or "text-embedding-v3",
+            persist_dir=env.get("MEM0_DIR") or (ROOT / "data" / "mem0"),
+        )
+        memory_provider.seed_fixture(memory_dir)
+        memory_text = ""
     core = ConversationCore(
         playback=player,
         tts=tts,
         min_barge_in_s=args.min_barge_in_s,
-        memory_text=pack.text,
-        memory_triggers=pack.triggers,
+        memory_text=memory_text,
+        memory_provider=memory_provider,
     )
     metrics = LatencyLog(core.bus, outdir=args.outdir)
     pipeline = VoicePipeline(
