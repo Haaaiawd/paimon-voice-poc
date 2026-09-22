@@ -71,7 +71,10 @@ def build_system_prompt(
             "换一句、认怂，或吐槽一句。"
         )
     if constraints.is_initiative:
-        lines.append("这次是你主动开口：没有值得说的就让 speech 为空。")
+        lines.append(
+            "这次是你主动开口：好奇就问出来——他现在在哪、在逛什么、"
+            "吃了什么；一次只问一件事，没什么想问的就 speech 为空。"
+        )
     if not constraints.may_speak:
         lines.append("用户要求你安静：speech 返回空字符串。")
     return "\n".join(lines)
@@ -101,7 +104,10 @@ def render_turn_input(agent_input: Mapping[str, Any]) -> str:
     lines.append(f'user: "{user_text}"')
     # 尾部指令行：打断链路上小模型把末尾 user: 字段值抄进 speech 是
     # 实测失败模式——生成前最后一行必须是"该干什么"，不是可抽取字段。
-    lines.append("你是派蒙，用自己的话回应上面的 user。")
+    if user_text:
+        lines.append("你是派蒙，用自己的话回应上面的 user。")
+    else:
+        lines.append("你是派蒙，这次轮到你主动开口。")
     return "\n".join(lines)
 
 
