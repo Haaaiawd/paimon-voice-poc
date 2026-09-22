@@ -19,6 +19,9 @@ dependencies = [
     "websockets>=13",
     "msgpack>=1.0",
     "dashscope>=1.24",
+    # WS gateway（TASK-017）：/ws/chat 契约层，uvicorn 起服务
+    "starlette>=0.37",
+    "uvicorn>=0.30",
 ]
 
 [project.optional-dependencies]

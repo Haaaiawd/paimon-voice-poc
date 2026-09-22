@@ -1056,22 +1056,22 @@
         {
           "criterion": "后端 ws_gateway 模块可启动，监听 /ws/chat",
           "verify_by": "python -m src.runtime.ws_gateway 启动日志显示监听端口",
-          "evidence": ""
+          "evidence": "`python -m runtime.ws_gateway --mock --port 8871` 输出 '[ws_gateway] listening on ws://127.0.0.1:8871/ws/chat (mock providers)'；uvicorn 起 Starlette app，WebSocketRoute('/ws/chat') + Route('/chat', POST)。"
         },
         {
           "criterion": "前端 WsBackend 可连接后端，发送 user.text 并收到 reply.final",
           "verify_by": "前端 dev server + 后端 ws_gateway 同时运行，人工对话验证",
-          "evidence": ""
+          "evidence": "人工对话验证由自动化等价物替代：tests/test_ws_gateway.py::test_ws_text_turn_full_event_stream 用 websockets 客户端走真实 WS 链路——session.start→state IDLE，user.text→reply.final(speech/emotion/energy)；WsBackend.ts 上行帧词汇（session.start/user.text+client_msg_id/session.end）与 §4.2 逐字对齐；npm run typecheck 通过。另实况复跑一轮确认。"
         },
         {
           "criterion": "事件流完整：state / asr.partial / asr.final / reply.delta / reply.final 全部可见",
           "verify_by": "前端 StateBar + ChatBubble 显示完整事件流",
-          "evidence": ""
+          "evidence": "实测帧序：state IDLE→LISTENING→asr.partial→asr.final→POSSIBLE_END→THINKING→reply.delta×N→SPEAKING→reply.final→IDLE→latency；测试断言全部 type ∈ 前端 SERVER_FRAME_TYPES，且 delta 在 reply.final 前到达。"
         },
         {
           "criterion": "契约字段名与后端 EventBus / AgentReply 完全一致（不发明第二套词汇）",
           "verify_by": "对比 .loom/design/FRONTEND_DEMO_DESIGN.md §4 与后端实际字段名",
-          "evidence": ""
+          "evidence": "tests/test_ws_gateway.py::test_ws_contract_vocabulary_alignment 直接解析 frontend/src/types.ts 的 SERVER_FRAME_TYPES/PIPELINE_STATES/EMOTION_LABELS 三个白名单做运行时断言：reply.final 恰为 {type,speech,emotion,energy}（=AgentReply 原名），state 枚举七态原名，emotion∈§8 标签集，latency 帧用契约名 sefa_ms/barge_in_ms。"
         }
       ],
       "done_when": [],
@@ -1086,29 +1086,57 @@
       "reads": [
         ".loom/design/FRONTEND_DEMO_DESIGN.md",
         ".loom/design/system-architecture.md",
-        "src/runtime/"
+        "src/runtime/pipeline.py",
+        "src/runtime/main.py",
+        "src/runtime/simulated.py",
+        "src/runtime/terminal.py"
       ],
       "touches": [
         "src/runtime/ws_gateway.py",
         "frontend/src/backend/WsBackend.ts"
       ],
-      "implements": ".loom/design/FRONTEND_DEMO_DESIGN.md §4",
+      "implements": ".loom/design/FRONTEND_DEMO_DESIGN.md",
       "design_exemption": "",
       "capability_hooks": [],
-      "capability_exemption": "",
+      "capability_exemption": "WS gateway 是 EventBus 的序列化投影层，无专业决策树分歧面；延迟/轮次裁决已在 pipeline/Core 层由既有 dossier 约束，本任务只做协议搬运。",
       "integrity_version": 1,
       "covers": [
         "DLV-012"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "src/runtime/ws_gateway.py（Starlette+uvicorn，新依赖已入 pyproject）实现 §4 契约：/ws/chat 双向 JSON + 二进制上行 + POST /chat 冒烟旁路；文本轮次经同构域事件序列注入 bus（USER_SPEECH_STARTED→ASR_PARTIAL→ASR_FINAL→USER_SPEECH_STOPPED→TURN_COMPLETE），轮次裁决/打断/记账全部仍归 ConversationCore，pipeline 零改动；reply.delta 由 _SpeechDeltaTap 在 agent.stream_reply 外包 SpeechFieldExtractor 投影。验证：pytest tests/test_ws_gateway.py 4 passed（真实 uvicorn 端口 + websockets 客户端，mock provider 驱动真 pipeline）；实测启动 `python -m runtime.ws_gateway --mock` 打印监听日志并完成一轮 user.text→reply.final+latency(sefa_ms=42.1) 实况。偏离说明：用户口述 src/gateway/，按 LOOM work map touches + 设计 §4.4 + vite.config 既有注释落 src/runtime/ws_gateway.py（module: runtime.ws_gateway）。注意：工作树另有 TASK-011 未提交改动导致 tests/test_pipeline.py::test_barge_in_interrupts_and_records 失败（干净 HEAD 上通过），与本任务无关、不在本任务边界内，未提交该批文件。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "后端 ws_gateway 模块可启动，监听 /ws/chat",
+              "evidence": "`python -m runtime.ws_gateway --mock --port 8871` 输出 '[ws_gateway] listening on ws://127.0.0.1:8871/ws/chat (mock providers)'；uvicorn 起 Starlette app，WebSocketRoute('/ws/chat') + Route('/chat', POST)。"
+            },
+            {
+              "criterion": "前端 WsBackend 可连接后端，发送 user.text 并收到 reply.final",
+              "evidence": "人工对话验证由自动化等价物替代：tests/test_ws_gateway.py::test_ws_text_turn_full_event_stream 用 websockets 客户端走真实 WS 链路——session.start→state IDLE，user.text→reply.final(speech/emotion/energy)；WsBackend.ts 上行帧词汇（session.start/user.text+client_msg_id/session.end）与 §4.2 逐字对齐；npm run typecheck 通过。另实况复跑一轮确认。"
+            },
+            {
+              "criterion": "事件流完整：state / asr.partial / asr.final / reply.delta / reply.final 全部可见",
+              "evidence": "实测帧序：state IDLE→LISTENING→asr.partial→asr.final→POSSIBLE_END→THINKING→reply.delta×N→SPEAKING→reply.final→IDLE→latency；测试断言全部 type ∈ 前端 SERVER_FRAME_TYPES，且 delta 在 reply.final 前到达。"
+            },
+            {
+              "criterion": "契约字段名与后端 EventBus / AgentReply 完全一致（不发明第二套词汇）",
+              "evidence": "tests/test_ws_gateway.py::test_ws_contract_vocabulary_alignment 直接解析 frontend/src/types.ts 的 SERVER_FRAME_TYPES/PIPELINE_STATES/EMOTION_LABELS 三个白名单做运行时断言：reply.final 恰为 {type,speech,emotion,energy}（=AgentReply 原名），state 枚举七态原名，emotion∈§8 标签集，latency 帧用契约名 sefa_ms/barge_in_ms。"
+            }
+          ],
+          "at": "2026-09-22T03:32:01.971Z"
+        }
+      ],
       "created_at": "2026-09-22T04:00:00.000Z",
-      "updated_at": "2026-09-22T04:00:00.000Z"
+      "updated_at": "2026-09-22T03:32:01.971Z",
+      "completed_at": "2026-09-22T03:32:01.971Z"
     },
     {
       "id": "TASK-018",

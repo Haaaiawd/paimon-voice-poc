@@ -21,7 +21,8 @@ src/
     llm/            # LLMProvider 抽象 + OpenAI-compatible 等
     tts/            # TTSProvider 抽象（stream_audio / cancel）+ 赛马实现
   metrics/          # latency log、SEFA、barge-in 计时
-  runtime/          # 音频采集/播放、pipeline 组装、入口 main
+  runtime/          # 音频采集/播放、pipeline 组装、入口 main、
+                    # ws_gateway.py（WS 契约投影层，FRONTEND_DEMO_DESIGN §4）
 ```
 
 业务层不得直接 import 供应商 SDK，一律经 `providers/` 与 `turn/` 的 adapter。
