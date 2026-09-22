@@ -20,6 +20,10 @@ from collections.abc import AsyncIterable, AsyncIterator
 from typing import Any
 
 
+class TTSError(Exception):
+    """TTS provider 侧错误：握手失败 / task-failed / 连接异常中断。"""
+
+
 class TTSProvider(ABC):
     """流式 TTS 供应商抽象。
 

@@ -22,7 +22,7 @@ conversation/ + character/ + runtime coordination + metrics。
 | Turn Detection | Pipecat Smart Turn（不自训练） |
 | ASR | 阿里云百炼/通义听悟流式（DashScope；D-010 取代"暂不锁定"），key 已到位并实测通过 |
 | LLM | OpenAI-compatible 抽象；赛马名单 DeepSeek + 通义千问，TTFT > TPS |
-| TTS | Fish s2.1-pro-free（免费层）+ 百炼 cosyvoice-v3-flash 双 adapter 赛马（D-014 取代 D-009）；CosyVoice 本地自部署留后续 |
+| TTS | 百炼 cosyvoice-v3-flash 为主力（D-014 赛马裁决，热 TTFA p50 976ms vs Fish 1090ms，取消均 100%）；Fish s2.1-pro-free adapter 保留为第二家可插路径；CosyVoice 本地自部署留后续 |
 | Transport | 第一版本地，不写死；LiveKit 留给后续多端 |
 
 ## Data and state

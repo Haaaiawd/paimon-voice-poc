@@ -127,3 +127,9 @@ Current truth belongs in PROJECT.md and linked design documents. This file prese
 - Supersedes: D-009
 - Affects: .loom/design/tech-stack.md, .loom/design/conversation-core.md, .loom/capabilities/chinese-tts-eval/
 - Recorded: 2026-09-21T15:38:55.611Z
+
+## D-2026-09-22-8b5z: TTS 赛马裁决：百炼 cosyvoice-v3-flash 胜出为主力 TTS，Fish s2.1-pro-free 保留为第二家可插 adapter（D-014 落地）。实测热 TTFA（WS 常驻/预热连接，10 轮×8 派蒙域测句）：bailian mean 1021ms / p50 976ms / p95 1262ms；fish mean 1137ms / p50 1090ms / p95 1364ms。取消成功率两家均 100%（5/5，零残音）。bailian 另胜在境内直连稳定性与 v3 Instruct 情感控制通道（emotion 标签可映射）；fish 保留免费层成本优势但跨境延迟更高且 v1 协议一会话一连接（靠预热保热 TTFA）。注意：bailian cancel() 在文本已全部提交的最坏情况下需排空残余音频，实测 ~1.1s；音频对消费方立即停推，等待只发生在返回前清 socket——barge-in 链路若要求 cancel 秒回，可改走关 socket 快路径（牺牲连接复用）。接口不锁死：TTSProvider 抽象不变，败方 adapter 仍可随时替换或并存。
+
+- Changed: data/tts_benchmark/latest.json, data/tts_benchmark/latest.md, src/providers/tts/fish_audio.py, src/providers/tts/bailian_cosyvoice.py, .loom/design/tech-stack.md
+- Affected tasks: TASK-008
+- At: 2026-09-22T01:37:42.023Z

@@ -557,17 +557,17 @@
         {
           "criterion": "Fish adapter：WS 流式接入（s2.1-pro-free），LLM token 流→音频流，播放中 cancel() 立即停且无残音",
           "verify_by": "python -m src.providers.tts.fish_demo 人工听 + pytest tests/test_fish_tts.py cancel 断言",
-          "evidence": ""
+          "evidence": "src/providers/tts/fish_audio.py（v1 msgpack 协议 text+flush 语义边界、stop 收尾、会话间 socket 预热）；pytest tests/test_fish_tts.py 9 例全过（cancel 后 0 残音 chunk、立刻重开新会话出音频）；fish_demo --cancel 真实端点验证通过"
         },
         {
           "criterion": "百炼 adapter：cosyvoice-v3-flash WS 流式接入（continue-task 增量文本 + finish-task 收尾），cancel 立即停且无残音",
           "verify_by": "python -m src.providers.tts.bailian_demo 人工听 + pytest cancel 断言",
-          "evidence": ""
+          "evidence": "src/providers/tts/bailian_cosyvoice.py（常驻 WS 复用、directive=cancel + 排空残余帧）；pytest tests/test_bailian_tts.py 11 例全过（含生成器停 yield 时 cancel 亲自排空路径、同 socket 重开断言 connections==1）；bailian_demo --cancel 真实端点验证通过"
         },
         {
           "criterion": "同一测句集在真实管线内对两家各跑 ≥10 轮，输出热 TTFA（WS 常驻连接）对比表；胜出者写入决策记录",
           "verify_by": "data/ 下 tts_benchmark 结果文件 + loom decision 更新",
-          "evidence": ""
+          "evidence": "data/tts_benchmark/bench_20260922T013525Z.json：fish 热 TTFA mean1137/p50 1090/p95 1364ms，bailian mean1021/p50 976/p95 1262ms，warm 10/10 两家，取消成功率 100% 两家；胜出者 bailian 已写入 DECISIONS（D-2026-09-22-8b5z）并更新 tech-stack.md"
         }
       ],
       "done_when": [],
@@ -617,15 +617,39 @@
         "DLV-003",
         "DLV-001"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pytest: 全套 112 passed / 2 skipped，其中 test_fish_tts.py 9 例 + test_bailian_tts.py 11 例覆盖协议信封、流式写入、cancel 契约（停推/清 buffer/同 socket 重开）、task-failed 透传、env 代理绕过、无 key 降级",
+        "真实端点冒烟：python -m src.providers.tts.fish_demo --out（659KB PCM，TTFA 1627ms）；python -m src.providers.tts.bailian_demo --cancel（cancel 后仅 1 chunk、同 socket 重开 hot TTFA 908ms）",
+        "赛马：scripts/bench_tts.py 10 轮 TTFA + 5 轮取消探针/家 → data/tts_benchmark/bench_20260922T013525Z.json + latest.json + latest.md；bailian 热 TTFA p50 976ms < fish 1090ms，取消成功率两家 100% 零残音",
+        "裁决已记录：loom decision D-2026-09-22-8b5z + .loom/design/tech-stack.md 已更新",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "Fish adapter：WS 流式接入（s2.1-pro-free），LLM token 流→音频流，播放中 cancel() 立即停且无残音",
+              "evidence": "src/providers/tts/fish_audio.py（v1 msgpack 协议 text+flush 语义边界、stop 收尾、会话间 socket 预热）；pytest tests/test_fish_tts.py 9 例全过（cancel 后 0 残音 chunk、立刻重开新会话出音频）；fish_demo --cancel 真实端点验证通过"
+            },
+            {
+              "criterion": "百炼 adapter：cosyvoice-v3-flash WS 流式接入（continue-task 增量文本 + finish-task 收尾），cancel 立即停且无残音",
+              "evidence": "src/providers/tts/bailian_cosyvoice.py（常驻 WS 复用、directive=cancel + 排空残余帧）；pytest tests/test_bailian_tts.py 11 例全过（含生成器停 yield 时 cancel 亲自排空路径、同 socket 重开断言 connections==1）；bailian_demo --cancel 真实端点验证通过"
+            },
+            {
+              "criterion": "同一测句集在真实管线内对两家各跑 ≥10 轮，输出热 TTFA（WS 常驻连接）对比表；胜出者写入决策记录",
+              "evidence": "data/tts_benchmark/bench_20260922T013525Z.json：fish 热 TTFA mean1137/p50 1090/p95 1364ms，bailian mean1021/p50 976/p95 1262ms，warm 10/10 两家，取消成功率 100% 两家；胜出者 bailian 已写入 DECISIONS（D-2026-09-22-8b5z）并更新 tech-stack.md"
+            }
+          ],
+          "at": "2026-09-22T01:38:05.257Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T15:57:15.055Z"
+      "updated_at": "2026-09-22T01:38:05.258Z",
+      "completed_at": "2026-09-22T01:38:05.258Z"
     },
     {
       "id": "TASK-009",
