@@ -917,17 +917,17 @@
         {
           "criterion": "用例 A–G 逐个人工验证并记录结果",
           "verify_by": "eval 记录文件含每用例通过/失败与备注",
-          "evidence": ""
+          "evidence": "scripts/mvp_acceptance.py --cases 逐用例驱动真实 pipeline：A 一问一答 SEFA555ms；B 首次停顿 TURN_INCOMPLETE 不抢话、整句单轮单回复（LLM×1）；C barge_in_stop 0.14ms+heard 截断+下轮输入含 assistant_was_interrupted/generated_but_not_heard；D '闭嘴15秒'→SILENCED 窗口内 0 回应 0 插话、'派蒙'唤醒词退出后恢复；E ~95s 沉默触发主动开口×2、间隔 45.1s≥cooldown；F 45s 连讲 0 回应、单轮单回复；G 4 轮互怼全 completed、SEFA~537ms、heard 顺序一致。逐用例账本 data/mvp_acceptance/latency/session_*.jsonl；汇总 results_20260922T042748Z.json；scripts/mvp_eval.md §1 逐条记录。"
         },
         {
           "criterion": "连续对话 ≥10 分钟无崩溃，latency log 完整",
           "verify_by": "data/ 下完整 session log",
-          "evidence": ""
+          "evidence": "soak 单会话墙钟 637.9s（≥600s）：26 轮全部落账、0 pipeline error、结束回 IDLE；latency log 九时间戳+SEFA p50 536.3ms/p95 553.7ms+分阶段 p50/p95+speculative hit 24/24+turn_source 全 model；SILENCED 窗口 0 回应、initiative×2 受 cooldown 约束。证据：data/latency_log/session_20260922T042330Z.jsonl + summary_20260922T042330Z.json、data/mvp_acceptance/playback_soak.wav。注：19/26 轮标 interrupted 主要源于 DEF-001（WavSinkPlayer 累计记账致 SPEAKING 虚长），已在 eval 记录。"
         },
         {
           "criterion": "doc 06 §8 MVP 完成定义逐条核对",
           "verify_by": "逐条核对清单文件",
-          "evidence": ""
+          "evidence": "scripts/mvp_eval.md §3 逐条表：连续≥10min✅、停顿不抢话✅、可打断✅、打断后历史正确✅、延迟⚠️部分（链路536ms达标/真实TTFT~14s→DEF-002）、人格明显✅(TASK-009 实测+结构化输出)、≥2 LLM 可替换✅(OpenAICompatibleLLM 百炼/DeepSeek 通道)、≥2 TTS 可替换✅(Fish+百炼 CosyVoice, D-014)、基础 latency log✅。缺陷 DEF-001/DEF-002 记入 scripts/mvp_eval.md §4 + LOOM F-036/F-037/Q-007/Q-008。"
         }
       ],
       "done_when": [],
@@ -961,15 +961,36 @@
       "covers": [
         "DLV-010"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "scripts/mvp_eval.md（验收记录全文）。用例 A–G 7/7 PASS：data/mvp_acceptance/results_20260922T042748Z.json；soak 连续 637.9s/26 轮/0 pipeline error：data/mvp_acceptance/results_20260922T043408Z.json + data/latency_log/session_20260922T042330Z.jsonl + summary_20260922T042330Z.json。回归 pytest tests/ = 191 passed / 3 skipped（环境项）。doc 06 §8 九条：8 条满足、第 5 条（延迟）部分满足——脚本化链路 SEFA p50 536ms 入 500–800ms 区间，真实 qwen3.7-flash TTFT p50≈14s 记为 DEF-002(Q-007)；另记 DEF-001 WavSinkPlayer 跨 utterance 累计记账(Q-008)。验收驱动 scripts/mvp_acceptance.py 可复跑（--cases/--soak）。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "用例 A–G 逐个人工验证并记录结果",
+              "evidence": "scripts/mvp_acceptance.py --cases 逐用例驱动真实 pipeline：A 一问一答 SEFA555ms；B 首次停顿 TURN_INCOMPLETE 不抢话、整句单轮单回复（LLM×1）；C barge_in_stop 0.14ms+heard 截断+下轮输入含 assistant_was_interrupted/generated_but_not_heard；D '闭嘴15秒'→SILENCED 窗口内 0 回应 0 插话、'派蒙'唤醒词退出后恢复；E ~95s 沉默触发主动开口×2、间隔 45.1s≥cooldown；F 45s 连讲 0 回应、单轮单回复；G 4 轮互怼全 completed、SEFA~537ms、heard 顺序一致。逐用例账本 data/mvp_acceptance/latency/session_*.jsonl；汇总 results_20260922T042748Z.json；scripts/mvp_eval.md §1 逐条记录。"
+            },
+            {
+              "criterion": "连续对话 ≥10 分钟无崩溃，latency log 完整",
+              "evidence": "soak 单会话墙钟 637.9s（≥600s）：26 轮全部落账、0 pipeline error、结束回 IDLE；latency log 九时间戳+SEFA p50 536.3ms/p95 553.7ms+分阶段 p50/p95+speculative hit 24/24+turn_source 全 model；SILENCED 窗口 0 回应、initiative×2 受 cooldown 约束。证据：data/latency_log/session_20260922T042330Z.jsonl + summary_20260922T042330Z.json、data/mvp_acceptance/playback_soak.wav。注：19/26 轮标 interrupted 主要源于 DEF-001（WavSinkPlayer 累计记账致 SPEAKING 虚长），已在 eval 记录。"
+            },
+            {
+              "criterion": "doc 06 §8 MVP 完成定义逐条核对",
+              "evidence": "scripts/mvp_eval.md §3 逐条表：连续≥10min✅、停顿不抢话✅、可打断✅、打断后历史正确✅、延迟⚠️部分（链路536ms达标/真实TTFT~14s→DEF-002）、人格明显✅(TASK-009 实测+结构化输出)、≥2 LLM 可替换✅(OpenAICompatibleLLM 百炼/DeepSeek 通道)、≥2 TTS 可替换✅(Fish+百炼 CosyVoice, D-014)、基础 latency log✅。缺陷 DEF-001/DEF-002 记入 scripts/mvp_eval.md §4 + LOOM F-036/F-037/Q-007/Q-008。"
+            }
+          ],
+          "at": "2026-09-22T04:40:30.463Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:36:08.692Z"
+      "updated_at": "2026-09-22T04:40:30.463Z",
+      "completed_at": "2026-09-22T04:40:30.463Z"
     },
     {
       "id": "TASK-016",

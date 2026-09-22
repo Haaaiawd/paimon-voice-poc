@@ -2,9 +2,9 @@
   "schema_version": 2,
   "project": {
     "name": "paimon-voice-poc",
-    "status": "building",
+    "status": "complete",
     "created_at": "2026-09-21T12:46:06.954Z",
-    "updated_at": "2026-09-22T03:57:59.814Z"
+    "updated_at": "2026-09-22T04:40:30.464Z"
   },
   "understanding": {
     "confirmed": [
@@ -217,6 +217,18 @@
         "text": "A-005 旧框架已退役：TTS 不再是'Fish 主用+超阈值回退'，而是 D-014 的双 adapter 平等赛马——Fish s2.1-pro-free 与百炼 cosyvoice-v3-flash 都进真实管线，以热 TTFA/自然度对比数据裁决。",
         "source": "conversation",
         "at": "2026-09-21T16:19:16.723Z"
+      },
+      {
+        "id": "F-036",
+        "text": "TASK-012 MVP 验收（2026-09-22）：用例 A–G 7/7 通过（脚本化 provider 驱动真实 pipeline），soak 连续 637.9s/26 轮/0 error；doc 06 §8 第 5 条部分达标——真实 qwen3.7-flash TTFT p50≈13.8s，真实 SEFA≈14s 距 500–800ms 目标 ~17×（DEF-002）。",
+        "source": "conversation",
+        "at": "2026-09-22T04:40:10.882Z"
+      },
+      {
+        "id": "F-037",
+        "text": "DEF-001：WavSinkPlayer（simulated.py）_written 跨 utterance 累计、stop() 不归零 → pending 虚高、PLAYBACK_STOPPED 延迟、SPEAKING 虚长、后续用户语音被误记为 barge-in；StreamingPlayer 不受影响，无声卡降级路径会踩到。",
+        "source": "conversation",
+        "at": "2026-09-22T04:40:10.882Z"
       }
     ],
     "assumptions": [
@@ -308,6 +320,20 @@
         "at": "2026-09-21T12:48:55.125Z",
         "resolution": "GitHub 私有仓库 Haaaiawd/paimon-voice-poc，main 分支已推送同步",
         "resolved_at": "2026-09-21T15:57:15.289Z"
+      },
+      {
+        "id": "Q-007",
+        "question": "DEF-002：真实 LLM TTFT p50≈14s 远超 SEFA 500–800ms 目标——换更快模型/供应商，还是按 doc 06 §3'benchmark 后修正'修订目标区间？",
+        "impact": "high",
+        "status": "open",
+        "at": "2026-09-22T04:40:10.882Z"
+      },
+      {
+        "id": "Q-008",
+        "question": "DEF-001：WavSinkPlayer 按 utterance 归零 _written/_chunks 的修复归到哪个 Task（不影响本验收判定）？",
+        "impact": "low",
+        "status": "open",
+        "at": "2026-09-22T04:40:10.883Z"
       }
     ]
   },

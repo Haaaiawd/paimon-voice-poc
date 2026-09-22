@@ -111,7 +111,7 @@
       "slug": "mvp-eval",
       "title": "MVP 验收：测试用例 A–G + 10 分钟连续运行",
       "kind": "verification",
-      "notes": "",
+      "notes": "TASK-012 完成(2026-09-22)：scripts/mvp_acceptance.py 以脚本化 provider（本机无声卡/key 受限）驱动真实 VoicePipeline+ConversationCore 定速回放。用例 A–G 7/7 PASS（data/mvp_acceptance/results_20260922T042748Z.json）：B 首次停顿不抢话、C 打断 0.14ms+heard 截断+下轮知情、D SILENCED 窗口 0 回应+唤醒词退出、E 主动开口×2 间隔≥cooldown、F 45s 连讲不插嘴、G 4 轮互怼 SEFA~537ms。soak 637.9s/26 轮/0 error（results_20260922T043408Z.json + data/latency_log/session_20260922T042330Z.jsonl），脚本化 SEFA p50 536ms。doc 06 §8 第 5 条部分达标：真实 qwen3.7-flash TTFT p50≈14s→DEF-002(Q-007)；另记 DEF-001 WavSinkPlayer 跨 utterance 累计记账致 SPEAKING 虚长(Q-008)。记录：scripts/mvp_eval.md；pytest 191 passed/3 skipped。",
       "covered_by": [
         "TASK-012"
       ],
