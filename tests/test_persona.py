@@ -263,6 +263,39 @@ class TestBuildMessages:
         assert messages[2]["content"].endswith("——")
         assert messages[-1]["role"] == "user"
 
+    def test_context_hygiene_folds_noise(self):
+        """防退化卫生：末尾 user 与 turn-input 去重、旧打断碎片折叠成
+        带话题前缀的标记、同角色连续条目合并保持交替。"""
+        agent_input = {
+            **NORMAL_INPUT,
+            "last_user_text": "后面这句",
+            "recent_heard_history": [
+                {"role": "user", "text": "第一句"},
+                {
+                    "role": "assistant",
+                    "text": "说到一半的回复片段一",
+                    "interrupted": True,
+                },
+                {"role": "user", "text": "中间这句"},
+                {"role": "user", "text": "又一句"},  # noop 堆出的连续 user
+                {
+                    "role": "assistant",
+                    "text": "最新的半截回复",
+                    "interrupted": True,
+                },
+                {"role": "user", "text": "后面这句"},  # 与 last_user_text 重复
+            ],
+        }
+        messages = make_agent(lambda r: None).build_messages(agent_input)
+        contents = [m["content"] for m in messages]
+        # 旧碎片折叠成带话题前缀的标记；最新一条保留 ——
+        assert "（'说到一半的回复片段一'说到一半被打断）" in contents
+        assert "最新的半截回复——" in contents
+        # 连续 user 合并成一条
+        assert "中间这句；又一句" in contents
+        # 与 last_user_text 重复的历史条目不重复渲染（只在 turn 块出现）
+        assert sum(c == "后面这句" for c in contents) == 0
+
     def test_interruption_context_rendered_per_doc03(self):
         """doc 03 §3：四行结构原样呈现给下一轮 LLM。"""
         agent_input = {

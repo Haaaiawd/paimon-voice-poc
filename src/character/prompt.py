@@ -113,13 +113,54 @@ def build_messages(
             ),
         }
     ]
-    for entry in agent_input.get("recent_heard_history") or ():
+    hist = [
+        e
+        for e in (agent_input.get("recent_heard_history") or ())
+        if str(e.get("text") or "")
+    ]
+    # 上下文卫生——三条防退化规则：
+    # 1) 本轮 user 转写已在 turn-input 块的 user: 行里，hist 末尾的同
+    #    文本不再渲染（同一句话出现两次会被当成"强调"模式）。
+    last_user = str(agent_input.get("last_user_text") or "")
+    if (
+        last_user
+        and hist
+        and hist[-1].get("role") == "user"
+        and str(hist[-1].get("text") or "") == last_user
+    ):
+        hist = hist[:-1]
+    # 2) 非最新的 interrupted 半截回复折叠成带话题前缀的标记：保留
+    #    "说过什么/被打断"的事实防失忆，但不再把一串截断文本当成正常
+    #    assistant 输出喂给模型（实测碎片密度高会触发退化吐垃圾）。
+    last_interrupted = max(
+        (
+            i
+            for i, e in enumerate(hist)
+            if e.get("role") == "assistant" and e.get("interrupted")
+        ),
+        default=-1,
+    )
+    normalized: list[tuple[str, str]] = []
+    for i, entry in enumerate(hist):
+        role = str(entry.get("role"))
         text = str(entry.get("text") or "")
-        if not text:
+        if role == "assistant" and entry.get("interrupted"):
+            if i == last_interrupted:
+                text += TRUNCATION_MARK
+            else:
+                gist = text[:10] + "…" if len(text) > 10 else text
+                text = f"（'{gist}'说到一半被打断）"
+        normalized.append((role, text))
+    # 3) 同角色连续条目合并：noop/superseded 轮不留 assistant 痕迹，
+    #    用户连说几段会堆出连续的 user——"没人回应"会被学成沉默模式，
+    #    折叠保持 user/assistant 交替。连续折叠标记合并为一个。
+    for role, text in normalized:
+        last_msg = messages[-1]
+        if last_msg["role"] == role:
+            if text.startswith("（'") and last_msg["content"].startswith("（'"):
+                continue
+            last_msg["content"] += "；" + text
             continue
-        # heard 面历史：被打断的 assistant 轮次补截断标记
-        if entry.get("role") == "assistant" and entry.get("interrupted"):
-            text += TRUNCATION_MARK
-        messages.append({"role": str(entry.get("role")), "content": text})
+        messages.append({"role": role, "content": text})
     messages.append({"role": "user", "content": render_turn_input(agent_input)})
     return messages
