@@ -1,0 +1,446 @@
+{
+  "trip": {
+    "title": "南京七日",
+    "start_date": "2026-10-12",
+    "end_date": "2026-10-18",
+    "city": "南京",
+    "companion": "派蒙",
+    "mood": "轻松、好奇、偶尔拌嘴",
+    "days": [
+      {
+        "day": 1,
+        "date": "2026-10-12",
+        "title": "抵达南京",
+        "summary": "从上海坐高铁到南京南，下着小雨。",
+        "events": [
+          {
+            "time": "09:15",
+            "location": "上海虹桥火车站",
+            "activity": "赶高铁，差点迟到。",
+            "emotion": "慌张",
+            "dialogue": "你要是再慢一点，我们就只能改签了！",
+            "memory_type": "event"
+          },
+          {
+            "time": "10:42",
+            "location": "南京南站",
+            "activity": "出站，雨停了，空气里有梧桐树的味道。",
+            "emotion": "好奇",
+            "dialogue": "哇，这就是南京的梧桐吗？比照片里还要夸张。",
+            "memory_type": "observation"
+          },
+          {
+            "time": "12:30",
+            "location": "新街口附近酒店",
+            "activity": "办理入住，放下行李。",
+            "emotion": "放松",
+            "dialogue": null,
+            "memory_type": "event"
+          },
+          {
+            "time": "13:15",
+            "location": "明瓦廊小吃街",
+            "activity": "吃午饭：鸭血粉丝汤 + 汤包。",
+            "emotion": "开心",
+            "dialogue": "这个汤包比我想象中要甜……不过还行吧，本小姐原谅你了。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "15:00",
+            "location": "酒店房间",
+            "activity": "午休，躺了四十分钟。",
+            "emotion": "慵懒",
+            "dialogue": null,
+            "memory_type": "event"
+          },
+          {
+            "time": "16:30",
+            "location": "德基广场",
+            "activity": "逛商场，买了两杯奶茶。",
+            "emotion": "满足",
+            "dialogue": "这杯芋泥波波比你上次请我的那杯好喝，我记住了。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "19:00",
+            "location": "秦淮河风光带",
+            "activity": "夜游秦淮河，看灯光。",
+            "emotion": "感动",
+            "dialogue": "突然觉得……要是能一直这样就好了。虽然我嘴上说你拍照技术烂，但今天拍得还行。",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 2,
+        "date": "2026-10-13",
+        "title": "夫子庙与老门东",
+        "summary": "逛了夫子庙一圈，买了些小玩意儿。",
+        "events": [
+          {
+            "time": "09:30",
+            "location": "夫子庙",
+            "activity": "逛庙，看了江南贡院。",
+            "emotion": "好奇",
+            "dialogue": "原来古代考个秀才这么难……你要是穿越回去，估计连院试都过不了。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:45",
+            "location": "夫子庙小吃",
+            "activity": "吃牛肉锅贴。",
+            "emotion": "满足",
+            "dialogue": "这个锅贴比上海的脆多了，你尝尝。对了，给我拍照要拍出食欲感，懂吗？",
+            "memory_type": "experience"
+          },
+          {
+            "time": "14:00",
+            "location": "老门东",
+            "activity": "逛巷子，看老房子。",
+            "emotion": "惬意",
+            "dialogue": "这边的墙特别适合拍照，你帮我拍一张。别又糊了！",
+            "memory_type": "observation"
+          },
+          {
+            "time": "15:20",
+            "location": "老门东茶馆",
+            "activity": "喝了雨花茶，听了评弹片段。",
+            "emotion": "平静",
+            "dialogue": null,
+            "memory_type": "experience"
+          },
+          {
+            "time": "17:00",
+            "location": "中华门城堡",
+            "activity": "爬城墙，看日落。",
+            "emotion": "震撼",
+            "dialogue": "你也太弱了，才爬了三分之一就喘……我飞上去都比你快。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "18:30",
+            "location": "城堡城墙",
+            "activity": "在城墙上拍照。",
+            "emotion": "开心",
+            "dialogue": "这张构图可以，虽然你的人像只占了三分之一，但勉强能用。",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 3,
+        "date": "2026-10-14",
+        "title": "紫金山",
+        "summary": "爬了紫金山，腿快断了。",
+        "events": [
+          {
+            "time": "08:00",
+            "location": "紫金山登山口",
+            "activity": "从灵谷寺出发上山。",
+            "emotion": "兴奋",
+            "dialogue": "你背包里装了什么？那么沉？不会是把整个家当都带来了吧？",
+            "memory_type": "observation"
+          },
+          {
+            "time": "09:30",
+            "location": "中山陵",
+            "activity": "参观中山陵，走台阶。",
+            "emotion": "肃穆",
+            "dialogue": "台阶这么多，设计的人是不是想让人走到腿断？",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:00",
+            "location": "音乐台",
+            "activity": "看鸽子，喂鸽子。",
+            "emotion": "治愈",
+            "dialogue": null,
+            "memory_type": "experience"
+          },
+          {
+            "time": "12:15",
+            "location": "山间野餐",
+            "activity": "坐在树荫下吃面包。",
+            "emotion": "惬意",
+            "dialogue": "这大概是这几天最舒服的一刻了。别说话，让我眯一会儿。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "14:00",
+            "location": "美龄宫",
+            "activity": "逛美龄宫，看民国家具。",
+            "emotion": "好奇",
+            "dialogue": "这个镜子好大！你在里面照过没？",
+            "memory_type": "observation"
+          },
+          {
+            "time": "15:30",
+            "location": "紫金山索道下山",
+            "activity": "坐索道下山。",
+            "emotion": "轻松",
+            "dialogue": "早干嘛去了，坐索道多好，非要自己爬上去……",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 4,
+        "date": "2026-10-15",
+        "title": "玄武湖与鸡鸣寺",
+        "summary": "早上逛玄武湖，中午去鸡鸣寺求了签。",
+        "events": [
+          {
+            "time": "07:30",
+            "location": "玄武湖",
+            "activity": "环湖慢跑一小段。",
+            "emotion": "清爽",
+            "dialogue": "你的配速还不如我散步快……",
+            "memory_type": "experience"
+          },
+          {
+            "time": "09:00",
+            "location": "玄武湖长椅",
+            "activity": "坐在湖边长椅上吃早餐。",
+            "emotion": "惬意",
+            "dialogue": "这一刻好像什么都不用想。对了，帮我拍张照，要把湖拍进去。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:00",
+            "location": "鸡鸣寺",
+            "activity": "进香，求签。",
+            "emotion": "郑重",
+            "dialogue": "你求了什么？不告诉我？小气。算了，我求的是……其实也不告诉你。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "12:30",
+            "location": "鸡鸣寺素菜馆",
+            "activity": "吃素面。",
+            "emotion": "满足",
+            "dialogue": "没想到素面也能这么鲜，你多吃点，别浪费。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "14:30",
+            "location": "南京博物院",
+            "activity": "逛南博，看瓷器展。",
+            "emotion": "震撼",
+            "dialogue": "这件瓷器比我见过所有的都好看。你要是也能做一个就好了。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "17:00",
+            "location": "博物院咖啡厅",
+            "activity": "喝咖啡，整理照片。",
+            "emotion": "平静",
+            "dialogue": "你拍得最好的三张，我已经存进云盘了。其他的……你自己留着吧。",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 5,
+        "date": "2026-10-16",
+        "title": "总统府与1912",
+        "summary": "看了很多历史，晚上去1912喝酒。",
+        "events": [
+          {
+            "time": "09:30",
+            "location": "总统府",
+            "activity": "逛总统府，看民国历史。",
+            "emotion": "好奇",
+            "dialogue": "原来以前这里这么大……要是我们能住这儿就好了。想得美。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:30",
+            "location": "总统府草坪",
+            "activity": "在草坪上晒太阳。",
+            "emotion": "慵懒",
+            "dialogue": null,
+            "memory_type": "experience"
+          },
+          {
+            "time": "12:45",
+            "location": " nearby 民国餐厅",
+            "activity": "吃民国菜。",
+            "emotion": "满足",
+            "dialogue": "这道菜叫什么来着？太平官燕？名字挺好听，味道……勉强及格。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "15:00",
+            "location": "梅园新村",
+            "activity": "逛梅园新村纪念馆。",
+            "emotion": "肃穆",
+            "dialogue": null,
+            "memory_type": "experience"
+          },
+          {
+            "time": "17:30",
+            "location": "1912街区",
+            "activity": "找了一家酒吧喝酒。",
+            "emotion": "放松",
+            "dialogue": "你喝奶茶的样子真不像会喝酒的人……来，尝一口。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "20:00",
+            "location": "1912 酒吧",
+            "activity": "听现场驻唱。",
+            "emotion": "浪漫",
+            "dialogue": "这首歌叫什么？我记一下……算了，你直接存进我歌单里吧。",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 6,
+        "date": "2026-10-17",
+        "title": "慢悠悠的下午",
+        "summary": "没有赶行程，就在老城区瞎逛。",
+        "events": [
+          {
+            "time": "09:30",
+            "location": "酒店",
+            "activity": "睡到自然醒。",
+            "emotion": "慵懒",
+            "dialogue": "今天不设闹钟了。你要是敢定，我就……就生气给你看。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:00",
+            "location": "科巷",
+            "activity": "逛科巷菜场，买了糖炒栗子。",
+            "emotion": "开心",
+            "dialogue": "这个栗子比上海的好吃！你尝尝。别剥得那么丑，给我！",
+            "memory_type": "experience"
+          },
+          {
+            "time": "13:00",
+            "location": "居民区巷弄",
+            "activity": "在巷子里瞎走，看老奶奶晒被子。",
+            "emotion": "惬意",
+            "dialogue": "这里好像我小时候住的地方……你那时候在干嘛？",
+            "memory_type": "experience"
+          },
+          {
+            "time": "14:30",
+            "location": "一家旧书店",
+            "activity": "在旧书店翻书。",
+            "emotion": "好奇",
+            "dialogue": "你看这本民国时期的笔记本，里面的字好漂亮。",
+            "memory_type": "observation"
+          },
+          {
+            "time": "16:00",
+            "location": "先锋书店（五台山店）",
+            "activity": "逛先锋书店，买了两张明信片。",
+            "emotion": "文艺",
+            "dialogue": "我写了一张给你，别偷看。要寄的。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "18:00",
+            "location": "长江大桥",
+            "activity": "傍晚看长江大桥日落。",
+            "emotion": "震撼",
+            "dialogue": "这也太壮观了……你拍下来了吗？没拍？那你自己脑补吧。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "19:30",
+            "location": "大桥附近烧烤摊",
+            "activity": "吃烧烤，喝啤酒。",
+            "emotion": "满足",
+            "dialogue": "这个烤串味道一般，但你选的地方氛围还行。勉强给你六十分。",
+            "memory_type": "experience"
+          }
+        ]
+      },
+      {
+        "day": 7,
+        "date": "2026-10-18",
+        "title": "离开南京",
+        "summary": "早上逛了菜场，买了盐水鸭，下午返程。",
+        "events": [
+          {
+            "time": "08:30",
+            "location": "酒店附近早餐店",
+            "activity": "吃豆浆油条。",
+            "emotion": "满足",
+            "dialogue": "这油条比上海的酥。你多吃点，下次未必能吃到。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "10:00",
+            "location": "夫子庙",
+            "activity": "最后逛一圈，买 souvenirs。",
+            "emotion": "舍不得",
+            "dialogue": "那个云锦书签给你买了，别弄丢。虽然你拍照技术烂，但选东西还行。",
+            "memory_type": "experience"
+          },
+          {
+            "time": "11:30",
+            "location": "南京南站",
+            "activity": "买好盐水鸭，准备上车。",
+            "emotion": "感伤",
+            "dialogue": null,
+            "memory_type": "event"
+          },
+          {
+            "time": "12:15",
+            "location": "高铁上",
+            "activity": "返程，翻看这几天照片。",
+            "emotion": "怀念",
+            "dialogue": "这些照片我存好了。下次再来南京的话……你记得订酒店。",
+            "memory_type": "experience"
+          }
+        ]
+      }
+    ],
+    "overall_memories": [
+      {
+        "type": "fact",
+        "content": "用户对南京的第一印象是'梧桐树很夸张'。",
+        "confidence": "high"
+      },
+      {
+        "type": "preference",
+        "content": "用户喜欢南京的雨后天和梧桐树，觉得比照片里好看。",
+        "confidence": "high"
+      },
+      {
+        "type": "experience",
+        "content": "秦淮河夜游时用户说'要是能一直这样就好了'，虽然嘴硬但那天很放松。",
+        "confidence": "medium"
+      },
+      {
+        "type": "preference",
+        "content": "用户喜欢安静的时刻，比如在玄武湖边椅子上吃早餐、在鸡鸣寺吃素面。",
+        "confidence": "high"
+      },
+      {
+        "type": "experience",
+        "content": "爬紫金山时用户体能一般，走一半就喘，被派蒙嘲笑。",
+        "confidence": "high"
+      },
+      {
+        "type": "fact",
+        "content": "用户拍照技术不稳定，但玄武湖边那张和城墙日落那张被认可。",
+        "confidence": "medium"
+      },
+      {
+        "type": "preference",
+        "content": "用户喜欢科巷的糖炒栗子和老门东的墙。",
+        "confidence": "high"
+      },
+      {
+        "type": "relationship",
+        "content": "这次旅行后，用户和派蒙的关系更自然了，拌嘴变多了但关心也更直接。",
+        "confidence": "medium"
+      }
+    ]
+  }
+}
