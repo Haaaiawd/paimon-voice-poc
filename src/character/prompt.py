@@ -96,6 +96,9 @@ def render_turn_input(agent_input: Mapping[str, Any]) -> str:
         lines.append(f"event: {interruption.get('event')}")
     user_text = str(agent_input.get("last_user_text") or "")
     lines.append(f'user: "{user_text}"')
+    # 尾部指令行：打断链路上小模型把末尾 user: 字段值抄进 speech 是
+    # 实测失败模式——生成前最后一行必须是"该干什么"，不是可抽取字段。
+    lines.append("你是派蒙，用自己的话回应上面的 user。")
     return "\n".join(lines)
 
 

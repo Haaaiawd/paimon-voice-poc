@@ -196,6 +196,30 @@ class TestInterruptionSixSteps:
         assert core.interruption.interruptions[-1]["weak"] is False
         assert core.context.pending_interruption is not None  # 告诉派蒙
 
+    def test_tail_window_is_completion_not_interrupt(self):
+        """尾窗打断：played_s ≈ 全部音频（排水窗口内用户开口）→
+        按自然播完封账——不发 AGENT_INTERRUPTED、不产 interruption
+        context（"说完了还算被打断"的实测假象）。"""
+        core, playback, tts, llm = make_core(played_s=1.8)  # audio_s=2.0
+        drive_to_speaking(core)
+        utterance = doc_utterance(core)
+        core.bus.clear_history()
+
+        core.publish(E.USER_SPEECH_STARTED)
+
+        assert playback.stop_calls == 1
+        assert tts.cancel_calls == 1
+        types = [e.type for e in core.bus.history]
+        assert E.AGENT_INTERRUPTED not in types  # 不算打断
+        assert E.PLAYBACK_STOPPED in types       # 状态机照常收回
+        assert utterance.interrupted is False
+        assert utterance.open is False
+        assert utterance.heard == GENERATED      # 全文 heard
+        assert core.context.pending_interruption is None
+        rec = core.interruption.interruptions[-1]
+        assert rec["tail_finished"] is True
+        assert core.state == S.LISTENING
+
     def test_silence_request_interrupts_utterance(self):
         """SPEAKING 中用户要求安静：六步照跑、记录打断，状态停在 SILENCED。"""
         core, playback, tts, llm = make_core(played_s=1.3)

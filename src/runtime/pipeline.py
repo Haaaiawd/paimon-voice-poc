@@ -589,6 +589,7 @@ class VoicePipeline:
             turn_id,
             messages,
             llm_payload={"turn_id": turn_id, "speculative": spec},
+            user_text=text,
         )
         # 轮末写回：只记"实际交付"的语音文本（heard 面）
         if provider is not None and utterance is not None and text.strip():
@@ -616,6 +617,7 @@ class VoicePipeline:
         messages: list,
         *,
         llm_payload: dict[str, Any],
+        user_text: str = "",
     ):
         """共用响应体：LLM 流 → speech 抽取 → chunker → TTS → 播放 → 封账。
 
@@ -657,8 +659,10 @@ class VoicePipeline:
             async def produce() -> None:
                 nonlocal got_token, llm_attempts
                 nonlocal last_parts
-                # 空/畸形输出重试一次：实测 qwen-flash 偶发吐 [1]、[ ] 这类
-                # 垃圾——普通轮静默 NOOP 是失败不是选择，重试一次再认命；
+                user_norm = _norm_speech(user_text) if user_text else ""
+                # 空/畸形/复读输出重试一次：实测 qwen-flash 偶发吐 [1]、[ ]
+                # 这类垃圾，打断链路上还会把 user: 字段值逐字抄进 speech
+                # ——普通轮这些是失败不是选择，重试一次再认命；
                 # 主动开口轮（turn_id=None）沉默合法，不重试。
                 # 只在"一个字都没抽出来"时重试——已有 speech 上队列说明
                 # 真在说话，重试会复读。
@@ -666,13 +670,18 @@ class VoicePipeline:
                 for attempt in range(attempts):
                     llm_attempts += 1
                     extractor = SpeechFieldExtractor()
+                    # 每轮新 chunker：中止的尝试不留残渣污染重试
+                    chunker = ClauseChunker()
                     attempt_parts: list[str] = []
                     last_parts = attempt_parts
                     extracted = False
+                    echo_aborted = False
                     parse_error: Exception | None = None
+                    gen_mark = len(utterance.generated)
+                    piece_buf = ""
                     # 重试带纠错提示：模型在乱序/打断上下文里系统性退化
-                    # 时（实测连吐 [1]/[30.142,65.798]），同样输入再发一次
-                    # 只会拿同样的垃圾——显式重申契约把它拽回来。
+                    # 时（实测连吐 [1]/复读 user），同样输入再发一次只会
+                    # 拿同样的垃圾——显式重申契约把它拽回来。
                     stream_messages = (
                         messages
                         if attempt == 0
@@ -680,7 +689,8 @@ class VoicePipeline:
                             *messages,
                             {
                                 "role": "user",
-                                "content": "上一条输出格式不对，重说。"
+                                "content": "上一条输出不合格：格式不对或在"
+                                "复读对方原话。重说——用自己的话，"
                                 '只输出 JSON 对象 {"speech","emotion",'
                                 '"energy","should_continue"}。',
                             },
@@ -700,27 +710,71 @@ class VoicePipeline:
                         attempt_parts.append(token)
                         raw_parts.append(token)
                         piece = extractor.feed(token)
-                        if piece:
-                            extracted = True
-                            utterance.add_generated(piece)
-                            for clause in chunker.feed(piece):
-                                chunk_q.put_nowait(clause)
-                    if extracted:
-                        break
-                    try:
-                        fallback = parse_agent_reply("".join(attempt_parts))
-                    except StructuredOutputError as e:
-                        fallback = None
-                        parse_error = e
-                    if fallback is not None and fallback.speech:
-                        utterance.add_generated(fallback.speech)
-                        for clause in chunker.feed(fallback.speech):
+                        if not piece:
+                            continue
+                        piece_buf += piece
+                        bn = _norm_speech(piece_buf)
+                        # 逐字复读闸：speech 与用户原文全等时立即中止——
+                        # 必须在进 chunker 前拦，否则回声先被合成出去。
+                        # 只判全等不判前缀：开头几个字撞车不等于复读
+                        # （"我们明天去玄武湖" vs "我们明天去哪儿"）。
+                        if user_norm and len(bn) >= 3 and bn == user_norm:
+                            echo_aborted = True
+                            break
+                        extracted = True
+                        utterance.add_generated(piece)
+                        for clause in chunker.feed(piece):
                             chunk_q.put_nowait(clause)
+                    if echo_aborted:
+                        # 回滚已记账碎片，本轮 utterance 保持干净
+                        utterance.generated = utterance.generated[:gen_mark]
+                    elif extracted:
+                        for clause in chunker.flush():
+                            utterance.add_generated(clause)
+                            chunk_q.put_nowait(clause)
+                        # 流结束时仍是用户原文的长前缀 → 半截复读
+                        bn = _norm_speech(piece_buf)
+                        if (
+                            user_norm
+                            and len(bn) >= 3
+                            and user_norm.startswith(bn)
+                        ):
+                            echo_aborted = True
+                    fallback = None
+                    if not extracted and not echo_aborted:
+                        try:
+                            fallback = parse_agent_reply(
+                                "".join(attempt_parts)
+                            )
+                        except StructuredOutputError as e:
+                            parse_error = e
+                        if fallback is not None and fallback.speech:
+                            fb_norm = _norm_speech(fallback.speech)
+                            if (
+                                user_norm
+                                and len(fb_norm) >= 3
+                                and user_norm.startswith(fb_norm)
+                            ):
+                                echo_aborted = True
+                            else:
+                                utterance.add_generated(fallback.speech)
+                                for clause in chunker.feed(fallback.speech):
+                                    chunk_q.put_nowait(clause)
+                                for clause in chunker.flush():
+                                    utterance.add_generated(clause)
+                                    chunk_q.put_nowait(clause)
+                                break
+                    if extracted and not echo_aborted:
                         break
                     if attempt + 1 < attempts:
                         continue
                     if parse_error is not None:
                         raise parse_error
+                    if echo_aborted:
+                        raise StructuredOutputError(
+                            "reply echoes user input: "
+                            f"{''.join(attempt_parts)[:120]}"
+                        )
                     # 最后一次尝试仍是垃圾（非契约形的非空输出）：
                     # 显式报错让前端看到，不再伪装成"她选择沉默"。
                     attempt_raw = "".join(attempt_parts).strip()
@@ -728,9 +782,6 @@ class VoicePipeline:
                         raise StructuredOutputError(
                             f"garbage reply after retry: {attempt_raw[:200]}"
                         )
-                for clause in chunker.flush():
-                    utterance.add_generated(clause)
-                    chunk_q.put_nowait(clause)
 
             async def audio_out() -> None:
                 first = await chunk_q.get()
@@ -804,7 +855,11 @@ class VoicePipeline:
             )
         except asyncio.CancelledError:
             # barge-in：InterruptionManager 已发 AGENT_INTERRUPTED +
-            # PLAYBACK_STOPPED 并封账 heard history，这里只清理
+            # PLAYBACK_STOPPED 并封账 heard history，这里只清理。
+            # 兜底：取消路径若漏封 utterance（如未走打断的 supersede），
+            # 静默丢弃——陈旧 open utterance 会把下一次开口误判成打断。
+            if utterance.open and ctx.current_utterance is utterance:
+                ctx.discard_current()
             raise
         except Exception as e:
             self.errors.append(f"respond: {e}")

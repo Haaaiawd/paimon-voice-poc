@@ -36,6 +36,10 @@ from .context import ContextManager
 from .events import Event, EventBus, EventType
 from .state_machine import ConversationState, ConversationStateMachine
 
+#: 尾窗判定：played_s 距全部音频不足这么多秒时，视为"其实播完了"——
+#: 排水窗口里（音频已生成、buffer 尚未播尽）的开口不再算打断。
+_TAIL_WINDOW_S = 0.4
+
 
 class PlaybackLike(Protocol):
     """runtime.playback.StreamingPlayer 的结构子集：stop() 返回已播秒数。"""
@@ -194,11 +198,18 @@ class InterruptionManager:
             except Exception as e:
                 errors.append(f"llm.cancel: {e}")
 
-        # 4. 强打断：heard / generated_but_not_heard 分离入双历史 +
-        #    pending interruption context（告诉派蒙她被打断了）。
-        #    弱打断：静默丢弃，派蒙视角她没说过话。
-        if audible:
+        # 4. 封账口径三选一：
+        #    - 弱打断（未出声）：静默丢弃，派蒙视角她没说过话；
+        #    - 尾窗打断（played_s ≈ 全部音频）：排水窗口内 buffer 还没
+        #      播尽但用户其实听完了——按自然播完封账，不算打断、不产
+        #      interruption context（那上下文是喂模型退化的源头之一）；
+        #    - 真打断：heard / not_heard 分离 + interruption context。
+        audio_s = utterance.audio_s if utterance is not None else 0.0
+        tail_finished = audible and played_s >= audio_s - _TAIL_WINDOW_S
+        if audible and not tail_finished:
             self._ctx.record_interruption(played_s)
+        elif audible:
+            self._ctx.seal_current(played_s)
         else:
             self._ctx.discard_current()
 
@@ -209,14 +220,20 @@ class InterruptionManager:
             "heard": utterance.heard if utterance else "",
             "not_heard": utterance.not_heard if utterance else "",
             "weak": not audible,
+            "tail_finished": tail_finished,
             "errors": errors,
         }
         self.interruptions.append(record)
 
-        # 5. AGENT_INTERRUPTED 域通知：仅强打断发（前端"被打断"提示、
-        #    metrics barge-in 口径都以真出声为准）；由本事件触发（非
-        #    AGENT_INTERRUPTED 自身）时才发，避免自我回声。
-        if audible and trigger != str(EventType.AGENT_INTERRUPTED):
+        # 5. AGENT_INTERRUPTED 域通知：仅"真出声且没说完"的强打断发
+        #    （前端"被打断"提示、metrics barge-in 口径都以真实被打断
+        #    为准）；由本事件触发（非 AGENT_INTERRUPTED 自身）时才发，
+        #    避免自我回声。
+        if (
+            audible
+            and not tail_finished
+            and trigger != str(EventType.AGENT_INTERRUPTED)
+        ):
             self._bus.publish(EventType.AGENT_INTERRUPTED, dict(record))
 
         # 6. PLAYBACK_STOPPED → INTERRUPTED→LISTENING（doc §2.2 第 6 步）。
