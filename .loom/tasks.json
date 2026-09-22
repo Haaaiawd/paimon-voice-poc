@@ -209,14 +209,16 @@
       "covers": [
         "DLV-009"
       ],
-      "status": "blocked",
+      "status": "open",
       "progress": {
         "completed": [
           "scripts/bench_llm.py 已实现：支持多 endpoint 配置，key/model 走环境变量",
-          "tests/test_bench_llm.py 6 passed：MISSING_KEY 跳过、分位数数学、MockTransport 全链路测量"
+          "tests/test_bench_llm.py 6 passed：MISSING_KEY 跳过、分位数数学、MockTransport 全链路测量",
+          "默认模型切换为 qwen3.7-flash（da919a6）",
+          "兜底标准 key 已写入 .env（额度少，优先用官方 key）"
         ],
-        "current": "blocked: 等待可用 API key",
-        "next": "配置 DASHSCOPE_API_KEY 后运行 .venv/bin/python scripts/bench_llm.py 产出延迟画像"
+        "current": "ready: DASHSCOPE_API_KEY 已配置（兜底 key 可用），可运行 .venv/bin/python scripts/bench_llm.py 产出 qwen3.7-flash 延迟画像",
+        "next": "运行 .venv/bin/python scripts/bench_llm.py --runs 20 产出 TTFT mean/p50/p95 + 结构化成功率"
       },
       "evidence": [
         "scripts/bench_llm.py 已实现并经 tests/test_bench_llm.py 验证（6 passed）",
@@ -225,13 +227,7 @@
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
       "updated_at": "2026-09-21T18:39:50.311Z",
-      "block": {
-        "reason": "等待可用 API key：.env 中 DASHSCOPE_API_KEY 需填入有效标准 key",
-        "recovery_conditions": [
-          "在 .env 填入有效 DASHSCOPE_API_KEY 后运行 .venv/bin/python scripts/bench_llm.py"
-        ],
-        "at": "2026-09-21T18:39:50.311Z"
-      }
+      "block": {}
     },
     {
       "id": "TASK-004",
