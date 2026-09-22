@@ -24,8 +24,10 @@ from pipecat.clocks.system_clock import SystemClock
 from pipecat.frames.frames import (
     Frame,
     InputAudioRawFrame,
+    InterimTranscriptionFrame,
     MetricsFrame,
     StartFrame,
+    TranscriptionFrame,
     VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
@@ -144,6 +146,27 @@ class SmartTurnAdapter:
         if self._completed_verdict is not None:
             return self._completed_verdict
         return self._verdict(EndOfTurnState.INCOMPLETE)
+
+    async def feed_transcript(
+        self, text: str, *, finalized: bool, timestamp: str = ""
+    ) -> None:
+        """把 ASR 转写喂进 strategy 的转写闸门（wait_for_transcript=True 时必需）。
+
+        模型已判 COMPLETE 时，finalized 转写到达即触发轮次结束（strategy
+        `_handle_transcription`）。来源归属不动 `_pending_source`：它在
+        判定路径（user_speech_stopped→model / append_audio 静音兜底→
+        silence_fallback）时已盖章，转写只是放行不是判定。
+        """
+        frame: Frame
+        if finalized:
+            frame = TranscriptionFrame(
+                text=text, user_id="user", timestamp=timestamp, finalized=True
+            )
+        else:
+            frame = InterimTranscriptionFrame(
+                text=text, user_id="user", timestamp=timestamp
+            )
+        await self.stop_strategy.process_frame(frame)
 
     async def clear(self) -> None:
         """丢弃当前轮次状态（外部强制结束时调用）。"""

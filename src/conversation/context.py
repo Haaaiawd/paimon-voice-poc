@@ -192,10 +192,17 @@ class ContextManager:
         initiative_reason: str | None = None,
         behavior_constraints: dict[str, Any] | None = None,
         character: str | None = None,
+        consume_interruption: bool = True,
     ) -> dict[str, Any]:
-        """doc 03 §5 的 Agent 输入结构；pending interruption 一次性消费。"""
+        """doc 03 §5 的 Agent 输入结构；pending interruption 一次性消费。
+
+        `consume_interruption=False` 用于投机预构造：pipeline 在 ASR partial
+        到达时先 peek interruption context 构造 prompt，正式提交时才消费，
+        避免投机 miss 把上下文白白丢掉。
+        """
         interruption = self.pending_interruption
-        self.pending_interruption = None
+        if consume_interruption:
+            self.pending_interruption = None
         if interruption is not None:
             interruption["user"] = last_user_text
         return {

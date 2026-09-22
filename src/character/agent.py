@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from typing import Any
 
 from providers.llm.base import AgentReply, ChatMessage, LLMProvider
@@ -65,3 +65,14 @@ class CharacterAgent:
             return NOOP_REPLY
         messages = build_messages(self.persona, agent_input, constraints)
         return await self._llm.complete_structured(messages, **kwargs)
+
+    def stream_reply(
+        self, messages: Sequence[ChatMessage], **kwargs: Any
+    ) -> AsyncIterator[str]:
+        """已构造 messages 的 token 级流式输出（pipeline 增量解析 speech）。
+
+        与 respond() 的区别：调用方（pipeline）对 messages 有命中/重建的
+        投机决策权，且要拿到逐 token 流驱动 TTS 增量合成。response_format
+        等参数经 kwargs 透传给底层 provider。
+        """
+        return self._llm.stream_reply(messages, **kwargs)

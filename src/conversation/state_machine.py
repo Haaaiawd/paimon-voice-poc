@@ -49,9 +49,11 @@ _TRANSITIONS: dict[
     # POSSIBLE_END：用户续说 → 回听；Smart Turn 判完 → 思考
     (ConversationState.POSSIBLE_END, EventType.USER_SPEECH_STARTED): ConversationState.LISTENING,
     (ConversationState.POSSIBLE_END, EventType.USER_TURN_COMPLETE): ConversationState.THINKING,
-    # THINKING：agent 出声 → 说；用户又开口 → 回听（在途响应由下游取消）
+    # THINKING：agent 出声 → 说；用户又开口 → 回听（在途响应由下游取消）；
+    # 回复为空（NOOP）或失败时 pipeline 发 PLAYBACK_STOPPED 收回到 IDLE
     (ConversationState.THINKING, EventType.AGENT_SPEAKING): ConversationState.SPEAKING,
     (ConversationState.THINKING, EventType.USER_SPEECH_STARTED): ConversationState.LISTENING,
+    (ConversationState.THINKING, EventType.PLAYBACK_STOPPED): ConversationState.IDLE,
     # SPEAKING：barge-in（doc 03 §2.2）；自然播完 → IDLE
     (ConversationState.SPEAKING, EventType.USER_SPEECH_STARTED): ConversationState.INTERRUPTED,
     (ConversationState.SPEAKING, EventType.AGENT_INTERRUPTED): ConversationState.INTERRUPTED,

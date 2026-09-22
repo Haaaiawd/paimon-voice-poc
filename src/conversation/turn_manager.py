@@ -35,13 +35,22 @@ _INPUT_EVENTS = (
 class TurnManager:
     """用户轮次裁决器。持有状态机引用以读"当前 Conversation State"。"""
 
-    def __init__(self, bus: EventBus, machine: ConversationStateMachine) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        machine: ConversationStateMachine,
+        *,
+        tail_asr_window_s: float = 2.0,
+    ) -> None:
         self._bus = bus
         self._machine = machine
         self._turn_open = False
         self._turn_id = 0
         self._last_text = ""
         self._awaiting_verdict = False
+        #: 轮次关闭时刻（事件 ts）：窗内迟到转写视为上一轮的尾帧。
+        self._turn_closed_ts: float | None = None
+        self._tail_window_s = tail_asr_window_s
         for et in _INPUT_EVENTS:
             bus.subscribe(et, self._on_event)
 
@@ -91,7 +100,24 @@ class TurnManager:
 
     def _on_asr(self, event: Event) -> None:
         # ASR 出声证明有语音：漏收 VAD start 时兜底开轮次，保证可测试性/鲁棒性。
+        # 但轮次关闭后（THINKING/SPEAKING/INTERRUPTED）迟到的转写是上一轮的
+        # 尾帧——wait_for_transcript 闸门下 ASR final 常与 TURN_COMPLETE 同刻
+        # 到达，此时再开轮次会留下永不关闭的幻影轮（下个 barge-in 会被错误
+        # 地判成 speech_resumed 续轮）。
         if not self._turn_open:
+            if self._machine.state in (
+                ConversationState.THINKING,
+                ConversationState.SPEAKING,
+                ConversationState.INTERRUPTED,
+            ):
+                return
+            if (
+                self._turn_closed_ts is not None
+                and event.ts - self._turn_closed_ts < self._tail_window_s
+            ):
+                # 快速响应可赶在 ASR 尾帧前回到 IDLE；窗内无 VAD start 的
+                # 转写是已关闭轮次的尾巴。真开口自有 USER_SPEECH_STARTED 开轮。
+                return
             self._open_turn({"reason": "asr_implied", "barge_in": False})
         text = event.payload.get("text", "")
         if text:
@@ -125,6 +151,7 @@ class TurnManager:
             return  # 陈旧裁决（如兜底超时在轮次关闭后才到）：忽略。
         self._turn_open = False
         self._awaiting_verdict = False
+        self._turn_closed_ts = event.ts
         can_respond = self._machine.state != ConversationState.SILENCED
         self._emit(
             EventType.USER_TURN_COMPLETE,
