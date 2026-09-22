@@ -27,6 +27,7 @@ from dotenv import dotenv_values
 
 from character.agent import CharacterAgent
 from conversation.core import ConversationCore
+from memory.loader import load_memory_digest
 from metrics.latency import LatencyLog
 from runtime.pipeline import VoicePipeline
 from runtime.simulated import (
@@ -105,6 +106,7 @@ def _load_env() -> dict[str, str]:
         "QWEN_MODEL",
         "TTS_PROVIDER",
         "TTS_VOICE",
+        "MEMORY_DIR",
     ):
         if k in os.environ:
             env[k] = os.environ[k]
@@ -245,7 +247,12 @@ async def _run(args) -> int:
     agent = CharacterAgent(llm)
 
     core = ConversationCore(
-        playback=player, tts=tts, min_barge_in_s=args.min_barge_in_s
+        playback=player,
+        tts=tts,
+        min_barge_in_s=args.min_barge_in_s,
+        memory_text=load_memory_digest(
+            env.get("MEMORY_DIR") or (ROOT / "memory")
+        ),
     )
     metrics = LatencyLog(core.bus, outdir=args.outdir)
     pipeline = VoicePipeline(

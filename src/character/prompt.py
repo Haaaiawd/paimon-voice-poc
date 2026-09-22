@@ -33,8 +33,7 @@ def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> s
     lines = [
         # ── stable core：身份与人格价值 ──
         f"你是{persona.identity}。",
-        f"语气：{'；'.join(persona.tone)}。",
-        "态度：毒舌可爱，嘴硬心软，像朋友互损；吐槽要准，但别真伤人。",
+        f"语气：{'；'.join(persona.tone)}；吐槽要准，但别真伤人。",
         # ── environment adaptation：实时语音约束 ──
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"
@@ -89,6 +88,9 @@ def render_turn_input(agent_input: Mapping[str, Any]) -> str:
             f'"{interruption.get("assistant_generated_but_not_heard", "")}"'
         )
         lines.append(f"event: {interruption.get('event')}")
+    memory = agent_input.get("memory")
+    if memory:
+        lines.append(f'memory: "{memory}"')
     user_text = str(agent_input.get("last_user_text") or "")
     lines.append(f'user: "{user_text}"')
     return "\n".join(lines)

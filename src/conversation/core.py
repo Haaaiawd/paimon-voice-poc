@@ -36,6 +36,7 @@ class ConversationCore:
         tts: TTSLike | None = None,
         min_barge_in_s: float = 0.0,
         initiative_config: InitiativeConfig | None = None,
+        memory_text: str = "",
         now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self.bus = bus or EventBus(now_fn=now_fn)
@@ -43,7 +44,7 @@ class ConversationCore:
             self.bus, silence_window_s=silence_window_s, now_fn=now_fn
         )
         self.turn_manager = TurnManager(self.bus, self.machine)
-        self.context = ContextManager(self.bus)
+        self.context = ContextManager(self.bus, memory_text=memory_text)
         self.interruption = InterruptionManager(
             self.bus,
             self.machine,

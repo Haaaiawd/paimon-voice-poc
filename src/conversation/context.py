@@ -107,9 +107,12 @@ class ContextManager:
         *,
         character: str = "paimon",
         history_limit: int = 20,
+        memory_text: str = "",
     ) -> None:
         self.character = character
         self.history_limit = history_limit
+        #: 启动期注入的长期记忆摘要（memory/ fixture），逐轮进 agent input。
+        self.memory_text = memory_text
         self.logical_history: list[dict[str, Any]] = []
         self.heard_history: list[dict[str, Any]] = []
         self.utterances: list[AgentUtterance] = []
@@ -235,6 +238,7 @@ class ContextManager:
                 self.heard_history[-self.history_limit :]
             ),
             "interruption_context": interruption,
+            "memory": self.memory_text or None,
             "silence_duration_ms": int(silence_duration_ms),
             "initiative_reason": initiative_reason,
             "behavior_constraints": dict(behavior_constraints or {}),
