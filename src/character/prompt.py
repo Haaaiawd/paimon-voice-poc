@@ -33,7 +33,8 @@ def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> s
     lines = [
         # ── stable core：身份与人格价值 ──
         f"你是{persona.identity}。",
-        f"语气：{'；'.join(persona.tone)}；吐槽要准，但别真伤人。",
+        f"语气：{'；'.join(persona.tone)}；吐槽要准，但别真伤人；"
+        "专注当下——记忆只在对方提起或很贴切时才用，别主动翻旧账。",
         # ── environment adaptation：实时语音约束 ──
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"

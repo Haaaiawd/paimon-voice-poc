@@ -16,21 +16,6 @@ from pathlib import Path
 #: 命中后记忆摘要继续注入的轮数（话题上桌后追问不再要求关键词）。
 MEMORY_HOT_TURNS = 3
 
-#: 通用回忆触发词：用户在主动调取记忆，与具体地名无关。
-GENERIC_TRIGGERS = (
-    "记得",
-    "记不记得",
-    "上次",
-    "之前",
-    "以前",
-    "那时候",
-    "当时",
-    "旅行",
-    "去过",
-    "回忆",
-    "怀念",
-)
-
 
 @dataclass(frozen=True)
 class MemoryPack:
@@ -46,7 +31,7 @@ def load_memory(root: str | Path) -> MemoryPack:
     if not root.is_dir():
         return MemoryPack("", frozenset())
     parts: list[str] = []
-    triggers: set[str] = set(GENERIC_TRIGGERS)
+    triggers: set[str] = set()
     for f in sorted(root.glob("*.json")):
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
@@ -65,8 +50,13 @@ def load_memory_digest(root: str | Path) -> str:
 
 
 def _render(data: object) -> tuple[str, set[str]]:
+    # fixture 可声明自己的回忆线索："triggers": [...]（语义归数据侧，
+    # 代码不编通用词表——什么算"提及"由记忆内容自己说了算）。
     if isinstance(data, dict) and isinstance(data.get("trip"), dict):
-        return _render_trip(data["trip"])
+        text, triggers = _render_trip(data["trip"])
+        triggers.update(str(t) for t in data.get("triggers") or ())
+        triggers.discard("")
+        return text, triggers
     # 兜底：未知形状 fixture 压成一行 JSON（截断防爆 prompt）
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))[:800], set()
 

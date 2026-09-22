@@ -19,10 +19,10 @@ def test_repo_fixture_loads_as_pack():
     assert "第1天" in pack.text and "第7天" in pack.text
     assert "梧桐" in pack.text
     assert len(pack.text) < 3000
-    # 触发词：城市/日标题/事件地点/通用回忆词
+    # 触发词：结构锚点（城市/日标题/事件地点）+ fixture 自声明 triggers
     assert "南京" in pack.triggers
     assert "鸡鸣寺" in pack.triggers
-    assert "记得" in pack.triggers
+    assert "旅行" in pack.triggers
 
 
 def test_missing_dir_returns_empty(tmp_path):
