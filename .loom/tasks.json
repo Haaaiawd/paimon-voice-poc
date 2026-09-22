@@ -172,12 +172,12 @@
         {
           "criterion": "benchmark 脚本对 qwen3.7-flash 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
           "verify_by": "python scripts/bench_llm.py 输出含实测数据的表格",
-          "evidence": ""
+          "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}，structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
         },
         {
           "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",
           "verify_by": "审阅脚本输出或 pytest tests/test_bench_llm.py",
-          "evidence": ""
+          "evidence": "DEEPSEEK_API_KEY 未配置 → deepseek 行 status=MISSING_KEY 且整体 status=ok（非 blocked）；tests/test_bench_llm.py 此前 6 passed 覆盖该路径"
         }
       ],
       "done_when": [],
@@ -209,7 +209,7 @@
       "covers": [
         "DLV-009"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [
           "scripts/bench_llm.py 已实现：支持多 endpoint 配置，key/model 走环境变量",
@@ -217,17 +217,34 @@
           "默认模型切换为 qwen3.7-flash（da919a6）",
           "兜底标准 key 已写入 .env（额度少，优先用官方 key）"
         ],
-        "current": "interrupted: 实现与单测完成，benchmark 实测未跑（会话中断，非 blocked）",
-        "next": "运行 .venv/bin/python scripts/bench_llm.py --runs 20 产出 TTFT mean/p50/p95 + 结构化成功率"
+        "current": "complete",
+        "next": ""
       },
       "evidence": [
         "scripts/bench_llm.py 已实现并经 tests/test_bench_llm.py 验证（6 passed）",
         "2026-09-21T18:39Z 实跑 → 两家均 MISSING_KEY，status=blocked",
-        "结果已落盘 data/llm_benchmark/bench_20260921T183917Z.json + latest.json + latest.md"
+        "结果已落盘 data/llm_benchmark/bench_20260921T183917Z.json + latest.json + latest.md",
+        "2026-09-22T03:56Z 实跑 .venv/bin/python scripts/bench_llm.py --runs 20：qwen3.7-flash（百炼 compatible-mode）20/20 TTFT 探针成功，TTFT mean 16437ms / p50 13824ms / p95 26630ms，total p50 14038ms / p95 26978ms；结构化探针 20/20 = 100%（json_object + parse_agent_reply 口径）。DeepSeek 无 key 标注 MISSING_KEY 跳过。结果落盘 data/llm_benchmark/bench_20260922T035641Z.json + latest.json + latest.md。",
+        ".env 主 DASHSCOPE_API_KEY 为 sk-ws-* workspace realtime 专用 key，chat/completions 401；实测经环境变量覆盖使用 DASHSCOPE_API_KEY_FALLBACK 标准 key。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "benchmark 脚本对 qwen3.7-flash 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
+              "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}，structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
+            },
+            {
+              "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",
+              "evidence": "DEEPSEEK_API_KEY 未配置 → deepseek 行 status=MISSING_KEY 且整体 status=ok（非 blocked）；tests/test_bench_llm.py 此前 6 passed 覆盖该路径"
+            }
+          ],
+          "at": "2026-09-22T03:57:59.893Z"
+        }
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-22T03:46:10.000Z",
-      "block": {}
+      "updated_at": "2026-09-22T03:57:59.894Z",
+      "block": {},
+      "completed_at": "2026-09-22T03:57:59.894Z"
     },
     {
       "id": "TASK-004",

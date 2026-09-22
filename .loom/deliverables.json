@@ -100,7 +100,7 @@
       "slug": "provider-benchmarks",
       "title": "赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）",
       "kind": "verification",
-      "notes": "",
+      "notes": "TASK-003 完成(2026-09-22)：scripts/bench_llm.py 对百炼 compatible-mode qwen3.7-flash 实测 20 次 TTFT streaming 探针 + 20 次 json_object 结构化探针（parse_agent_reply 线上口径）。结果：TTFT mean 16437ms / p50 13824ms / p95 26630ms；total p50 14038ms / p95 26978ms；structured 20/20 = 100%。DeepSeek 无 key → MISSING_KEY 优雅跳过。落盘 data/llm_benchmark/bench_20260922T035641Z.json + latest.{json,md}。注：.env 主 DASHSCOPE_API_KEY 为 sk-ws-* workspace realtime 专用 key，chat/completions 返回 401；本次实测用 DASHSCOPE_API_KEY_FALLBACK 标准 key（环境变量覆盖传入）。只做测量，未做选型结论。",
       "covered_by": [
         "TASK-003"
       ],
