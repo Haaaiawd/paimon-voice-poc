@@ -41,7 +41,7 @@ from conversation.events import (
 )
 from conversation.state_machine import ConversationState
 from metrics.latency import LatencyLog
-from providers.llm.base import parse_agent_reply
+from providers.llm.base import StructuredOutputError, parse_agent_reply
 
 #: 结构化输出走 json_object 模式（与 CharacterAgent.respond 同一口径）。
 _JSON_OBJECT_FORMAT = {"type": "json_object"}
@@ -631,37 +631,63 @@ class VoicePipeline:
         chunk_q: asyncio.Queue[str | None] = asyncio.Queue()
         audio_task: asyncio.Task | None = None
         got_token = False
+        llm_attempts = 0
         try:
-            extractor = SpeechFieldExtractor()
             chunker = ClauseChunker()
-            raw_parts: list[str] = []
+            raw_parts: list[str] = []  # 全部尝试的原始输出（诊断留痕）
+            last_parts: list[str] = []  # 最后一次尝试（最终 reply 解析源）
 
             async def produce() -> None:
-                nonlocal got_token
-                extracted_speech = False
-                async for token in self._agent.stream_reply(
-                    messages,
-                    response_format=_JSON_OBJECT_FORMAT,
-                    **self._llm_params,
-                ):
-                    if not got_token:
-                        got_token = True
-                        self.bus.publish(
-                            EventType.LLM_TOKEN, {"turn_id": turn_id, "first": True}
-                        )
-                    raw_parts.append(token)
-                    piece = extractor.feed(token)
-                    if piece:
-                        extracted_speech = True
-                        utterance.add_generated(piece)
-                        for clause in chunker.feed(piece):
-                            chunk_q.put_nowait(clause)
-                if not extracted_speech:
-                    fallback = parse_agent_reply("".join(raw_parts))
-                    if fallback.speech:
+                nonlocal got_token, llm_attempts
+                nonlocal last_parts
+                # 空/畸形输出重试一次：实测 qwen-flash 偶发吐 [1]、[ ] 这类
+                # 垃圾——普通轮静默 NOOP 是失败不是选择，重试一次再认命；
+                # 主动开口轮（turn_id=None）沉默合法，不重试。
+                # 只在"一个字都没抽出来"时重试——已有 speech 上队列说明
+                # 真在说话，重试会复读。
+                attempts = 1 if turn_id is None else 2
+                for attempt in range(attempts):
+                    llm_attempts += 1
+                    extractor = SpeechFieldExtractor()
+                    attempt_parts: list[str] = []
+                    last_parts = attempt_parts
+                    extracted = False
+                    parse_error: Exception | None = None
+                    async for token in self._agent.stream_reply(
+                        messages,
+                        response_format=_JSON_OBJECT_FORMAT,
+                        **self._llm_params,
+                    ):
+                        if not got_token:
+                            got_token = True
+                            self.bus.publish(
+                                EventType.LLM_TOKEN,
+                                {"turn_id": turn_id, "first": True},
+                            )
+                        attempt_parts.append(token)
+                        raw_parts.append(token)
+                        piece = extractor.feed(token)
+                        if piece:
+                            extracted = True
+                            utterance.add_generated(piece)
+                            for clause in chunker.feed(piece):
+                                chunk_q.put_nowait(clause)
+                    if extracted:
+                        break
+                    try:
+                        fallback = parse_agent_reply("".join(attempt_parts))
+                    except StructuredOutputError as e:
+                        fallback = None
+                        parse_error = e
+                    if fallback is not None and fallback.speech:
                         utterance.add_generated(fallback.speech)
                         for clause in chunker.feed(fallback.speech):
                             chunk_q.put_nowait(clause)
+                        break
+                    if attempt + 1 < attempts:
+                        continue
+                    if parse_error is not None:
+                        raise parse_error
                 for clause in chunker.flush():
                     utterance.add_generated(clause)
                     chunk_q.put_nowait(clause)
@@ -712,7 +738,7 @@ class VoicePipeline:
             await audio_task
             audio_task = None
 
-            reply = parse_agent_reply("".join(raw_parts))
+            reply = parse_agent_reply("".join(last_parts))
             noop = is_noop(reply)
             self.bus.publish(
                 EventType.AGENT_REPLY,
@@ -723,11 +749,12 @@ class VoicePipeline:
                     "energy": reply.energy,
                     "should_continue": reply.should_continue,
                     "noop": noop,
-                    # 空回复留痕：模型真选了 NOOP 还是输出了我们没接住的
+                    "llm_attempts": llm_attempts,
+                    # 空回复/重试留痕：模型真选了 NOOP 还是输出了我们没接住的
                     # 格式，看 raw 一眼就能分清（latency log extra.raw）。
                     **(
                         {"raw": "".join(raw_parts)[:400]}
-                        if noop and any(raw_parts)
+                        if (noop or llm_attempts > 1) and any(raw_parts)
                         else {}
                     ),
                 },

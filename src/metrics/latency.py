@@ -311,6 +311,10 @@ class LatencyLog:
                     # 分辨"模型选择沉默"与"输出没被接住"。
                     if event.payload.get("noop"):
                         self.current.extra["noop"] = True
+                    if event.payload.get("llm_attempts", 1) > 1:
+                        self.current.extra["llm_attempts"] = event.payload[
+                            "llm_attempts"
+                        ]
                     if raw := event.payload.get("raw"):
                         self.current.extra["raw"] = raw
             case EventType.PLAYBACK_STOPPED:

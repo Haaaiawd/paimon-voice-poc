@@ -585,3 +585,58 @@ async def test_fresh_reply_not_muted_by_history(tmp_path):
     await run_pipeline(pipeline)
 
     assert player.written_seconds > 0
+
+
+async def test_garbage_llm_output_retries_once(tmp_path):
+    """实测缺陷：qwen-flash 偶发吐 [1]/[ ] 这类垃圾——普通轮静默 NOOP
+    是失败不是选择，自动重试一次，第二次的真回复要出声。"""
+    calls = []
+
+    def reply_fn(_messages):
+        calls.append(1)
+        return "[1]" if len(calls) == 1 else REPLY
+
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, metrics, player, _, llm = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="还记得什么",
+        llm=ScriptedLLM(reply_fn),
+        tmp_path=tmp_path,
+    )
+    await run_pipeline(pipeline)
+
+    assert len(llm.requests) == 2  # 重试了一次
+    assert player.written_seconds > 0  # 重试的回复出声了
+    closed = [r for r in metrics.records if r.closed]
+    assert closed[-1].reply_speech == REPLY["speech"]
+    assert closed[-1].extra.get("llm_attempts") == 2
+    assert "[1]" in closed[-1].extra.get("raw", "")  # 首轮垃圾留痕
+
+
+async def test_garbage_twice_becomes_recorded_noop(tmp_path):
+    """两次都吐垃圾 → 认 NOOP，raw 留痕可查。"""
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, metrics, player, _, llm = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="还记得什么",
+        llm=ScriptedLLM("[1]"),
+        tmp_path=tmp_path,
+    )
+    await run_pipeline(pipeline)
+
+    assert len(llm.requests) == 2
+    assert player.written_seconds == 0  # 没有空气泡式输出
+    closed = [r for r in metrics.records if r.closed]
+    assert closed[-1].reply_speech == ""
+    assert closed[-1].extra.get("noop") is True
+    assert "[1]" in closed[-1].extra.get("raw", "")
