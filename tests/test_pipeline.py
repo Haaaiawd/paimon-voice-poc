@@ -181,6 +181,77 @@ async def test_json_string_reply_falls_back_to_speech_and_tts(tmp_path):
     assert player.written_seconds > 0
 
 
+async def test_followup_field_streams_and_speaks(tmp_path):
+    """契约 followup 字段：接住之后顺势追问——独立抽流、进 TTS、
+    进 utterance.generated、进 AGENT_REPLY（前端第二气泡）。"""
+    reply = {
+        "speech": "哈？你现在才发现？",
+        "followup": "你现在在哪儿玩呢？",
+        "emotion": "teasing",
+        "energy": 0.6,
+        "should_continue": False,
+    }
+    frames = [tone_frame() for _ in range(26)] + [
+        silence_frame() for _ in range(20)
+    ]
+    pipeline, metrics, player, tts, _ = make_pipeline(
+        frames=frames,
+        vad_segments=[(0, 26)],
+        transcripts="派蒙你好",
+        reply=reply,
+        turn=ScriptedTurn(release_on_final=True),
+        tmp_path=tmp_path,
+    )
+    replies = []
+    pipeline.core.bus.subscribe(
+        EventType.AGENT_REPLY, lambda e: replies.append(e.payload)
+    )
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    rec = metrics.records[-1]
+    assert rec.reply_speech == "哈？你现在才发现？"
+    # 追问真的被说出来（进 TTS）且记进 utterance.generated
+    assert "你现在在哪儿玩呢" in "".join(tts.synthesized)
+    assert "你现在在哪儿玩呢" in (
+        pipeline.core.context.utterances[-1].generated
+    )
+    # AGENT_REPLY 带闸后实际交付的 followup
+    assert replies[-1]["followup"] == "你现在在哪儿玩呢？"
+    assert replies[-1]["noop"] is False
+
+
+async def test_echoing_followup_is_dropped(tmp_path):
+    """复读式追问（followup ≈ 用户原文）被闸丢弃——speech 本体正常。"""
+    reply = {
+        "speech": "嗯嗯，然后呢？",
+        "followup": "你今天去哪儿玩了",  # 逐字复读用户输入
+        "emotion": "neutral",
+        "energy": 0.5,
+    }
+    frames = [tone_frame() for _ in range(26)] + [
+        silence_frame() for _ in range(20)
+    ]
+    pipeline, metrics, player, tts, _ = make_pipeline(
+        frames=frames,
+        vad_segments=[(0, 26)],
+        transcripts="你今天去哪儿玩了",
+        reply=reply,
+        turn=ScriptedTurn(release_on_final=True),
+        tmp_path=tmp_path,
+    )
+    replies = []
+    pipeline.core.bus.subscribe(
+        EventType.AGENT_REPLY, lambda e: replies.append(e.payload)
+    )
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    assert replies[-1]["followup"] == ""       # 复读追问被丢
+    assert "你今天去哪儿玩了" not in "".join(tts.synthesized)
+    assert "嗯嗯，然后呢" in "".join(tts.synthesized)  # speech 正常
+
+
 # ---------------------------------------------------------------- 自听回声
 
 

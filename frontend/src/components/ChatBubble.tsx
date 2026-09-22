@@ -30,10 +30,22 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
         height={36}
       />
       <div className="bubble-stack">
-        <SketchCard className="bubble bubble-paimon">
-          {message.text}
-          {message.streaming && <span className="streaming-caret">▏</span>}
-        </SketchCard>
+        {message.text && (
+          <SketchCard className="bubble bubble-paimon">
+            {message.text}
+            {message.streaming && !message.followup && (
+              <span className="streaming-caret">▏</span>
+            )}
+          </SketchCard>
+        )}
+        {message.followup && (
+          <SketchCard className="bubble bubble-paimon bubble-followup">
+            {message.followup}
+            {message.streaming && (
+              <span className="streaming-caret">▏</span>
+            )}
+          </SketchCard>
+        )}
         {message.reply && !message.streaming && (
           <EmotionBadge emotion={message.reply.emotion} />
         )}

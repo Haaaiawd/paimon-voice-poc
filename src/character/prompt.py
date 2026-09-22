@@ -48,9 +48,9 @@ def build_system_prompt(
         *([f"记忆：{memory}"] if memory else []),
         # 推进槽位：对话节奏策略——接住之后把天往旅行上带是主线，
         # 不是冷场兜底。是常驻行为规则（PRISMIX stable 面）。
-        "推进：先回应对方最后一句；然后把话题往旅行上引——"
-        "还没聊到旅行就先开口问他在哪玩，聊起来了就顺着问"
-        "吃什么、逛到哪、好不好玩。",
+        "推进：回应写进 speech，往旅行上引的追问写进 followup——"
+        "还没聊到旅行就问他在哪玩，聊起来就顺着问吃什么、逛到哪；"
+        "时机不合适 followup 留空。",
         # ── environment adaptation：实时语音约束 ──
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"
@@ -64,10 +64,12 @@ def build_system_prompt(
         ),
         # ── capability module：输出契约与闭嘴能力（doc 03 §6 schema；
         # emotion 枚举 = doc 05 §8）──
-        '只输出一个 JSON 对象 {"speech": string, "emotion": '
+        '只输出一个 JSON 对象 {"speech": string, "followup": string, '
+        '"emotion": '
         + "|".join(EMOTION_TAG_ORDER)
         + ' 之一, "energy": 0到1的小数, "should_continue": bool}；'
-        "不要输出任何其他文字。无话可说时 speech 为空字符串。",
+        "speech 回应对方，followup 是往他这趟旅行上引的追问"
+        "（不合适则空）；不输出其他文字，无话可说时 speech 为空。",
     ]
     # ── current turn：本轮行为限制（动态槽位，命中才渲染）──
     if constraints.was_interrupted:

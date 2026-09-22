@@ -134,11 +134,11 @@ class TestSystemPrompt:
                 may_speak=False,
             ),
         )
-        assert len(prompt) < 750
+        assert len(prompt) < 900
         assert len(prompt.splitlines()) <= 10
         for line in prompt.splitlines():
-            if line.startswith(("记忆：", "话题：")):
-                continue  # 数据载荷行，长度由数据内容决定
+            if line.startswith(("语气：", "话题：", "记忆：", "只输出")):
+                continue  # 数据/契约 schema 行，长度由内容决定
             assert len(line) < 200  # 无段落式描写
 
     def test_static_slots_content(self):

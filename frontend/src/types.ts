@@ -33,6 +33,8 @@ export type PipelineState = (typeof PIPELINE_STATES)[number];
 /** AgentReply — 03_CONVERSATION_CORE.md §6, verbatim field names. */
 export interface AgentReply {
   speech: string;
+  /** 接住之后顺势往旅行上引的追问；空串 = 本轮不追问。 */
+  followup?: string;
   emotion: Emotion;
   /** 0..1 */
   energy: number;
@@ -44,6 +46,8 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   text: string;
+  /** Paimon 追问（followup 字段）——渲染为同头像下的第二个气泡。 */
+  followup?: string;
   /** Paimon messages carry the full AgentReply so the emotion badge can render. */
   reply?: AgentReply;
   /** True while reply.delta frames are still arriving. */
@@ -65,8 +69,14 @@ export type ServerFrame =
   | { type: 'state'; state: PipelineState }
   | { type: 'asr.partial'; text: string }
   | { type: 'asr.final'; text: string }
-  | { type: 'reply.delta'; text: string }
-  | { type: 'reply.final'; speech: string; emotion: Emotion; energy: number }
+  | { type: 'reply.delta'; text: string; field?: 'speech' | 'followup' }
+  | {
+      type: 'reply.final';
+      speech: string;
+      followup?: string;
+      emotion: Emotion;
+      energy: number;
+    }
   | { type: 'audio.chunk'; seq: number; format: string }
   | { type: 'interrupted'; heard_text: string }
   | { type: 'latency'; sefa_ms: number; barge_in_ms: number }

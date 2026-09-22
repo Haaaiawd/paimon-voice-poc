@@ -41,12 +41,17 @@ class StructuredOutputError(LLMError):
 
 @dataclass(frozen=True)
 class AgentReply:
-    """doc 03 §6 的结构化输出：speech/emotion/energy/should_continue。"""
+    """doc 03 §6 的结构化输出：speech/followup/emotion/energy/should_continue。
+
+    followup 是"接住之后顺势追问"的独立字段——把引导话题做成显式
+    输出决定（该问就问、不该问就空），而不是祈祷模型在 speech 尾巴上
+    自觉多问一句。空字符串 = 本轮不追问。"""
 
     speech: str
     emotion: str = "neutral"
     energy: float = 0.5
     should_continue: bool = False
+    followup: str = ""
 
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
@@ -109,6 +114,7 @@ def parse_agent_reply(text: str) -> AgentReply:
         emotion=emotion if emotion in EMOTION_TAGS else "neutral",
         energy=min(max(energy, 0.0), 1.0),
         should_continue=bool(data.get("should_continue", False)),
+        followup=str(data.get("followup") or ""),
     )
 
 

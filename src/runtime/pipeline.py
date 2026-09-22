@@ -84,17 +84,16 @@ def _norm_speech(text: str) -> str:
 
 
 class SpeechFieldExtractor:
-    """从流式 JSON 输出中增量抽取 "speech" 字段的字符串值。
+    """从流式 JSON 输出中增量抽取指定字符串字段的值（默认 "speech"）。
 
-    不整段等 JSON 落地：识别到 `"speech": "` 后逐字符放出，遇到未转义的
+    不整段等 JSON 落地：识别到 `"<field>": "` 后逐字符放出，遇到未转义的
     收尾引号结束；\\n/\\t/\\"/\\\\/\\uXXXX 等转义就地解码。LLM 把 speech
-    放首字段时（我们的输出契约如此）TTS 能提前数百毫秒开工。
+    放首字段时（我们的输出契约如此）TTS 能提前数百毫秒开工；followup
+    字段同理走第二个实例（"speech" 之后的键），复用同一条流。
     """
 
-    _KEY_RE = re.compile(r'"speech"\s*:\s*"')
-    # key 前缀可能跨 token：正则最长前缀是 `"speech" : "`（10+字符），
-    # 留 12 字符尾窗防止 key 被截断漏匹配。
-    _KEEP_TAIL = 12
+    _KEEP_TAIL_PAD = 6  # key 前缀可能跨 token，尾窗冗余防止漏匹配
+
     _ESCAPES = {
         "n": "\n",
         "t": "\t",
@@ -107,21 +106,24 @@ class SpeechFieldExtractor:
         "/": "/",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, field: str = "speech") -> None:
+        self._key_re = re.compile(rf'"{re.escape(field)}"\s*:\s*"')
+        # key 前缀可能跨 token：尾窗冗余防止 key 被截断漏匹配。
+        self._keep_tail = len(field) + self._KEEP_TAIL_PAD
         self._buf = ""
         self._in_string = False
         self._done = False
 
     def feed(self, text: str) -> str:
-        """喂一段 LLM token，返回新解码出的 speech 字符。"""
+        """喂一段 LLM token，返回新解码出的字段字符。"""
         if self._done:
             return ""
         self._buf += text
         out: list[str] = []
         if not self._in_string:
-            m = self._KEY_RE.search(self._buf)
+            m = self._key_re.search(self._buf)
             if m is None:
-                self._buf = self._buf[-self._KEEP_TAIL :]
+                self._buf = self._buf[-self._keep_tail :]
                 return ""
             self._buf = self._buf[m.end() :]
             self._in_string = True
@@ -655,10 +657,11 @@ class VoicePipeline:
             chunker = ClauseChunker()
             raw_parts: list[str] = []  # 全部尝试的原始输出（诊断留痕）
             last_parts: list[str] = []  # 最后一次尝试（最终 reply 解析源）
+            final_followup = ""  # 回声闸后实际交付的追问文本
 
             async def produce() -> None:
                 nonlocal got_token, llm_attempts
-                nonlocal last_parts
+                nonlocal last_parts, final_followup
                 user_norm = _norm_speech(user_text) if user_text else ""
                 # 空/畸形/复读输出重试一次：实测 qwen-flash 偶发吐 [1]、[ ]
                 # 这类垃圾，打断链路上还会把 user: 字段值逐字抄进 speech
@@ -670,6 +673,9 @@ class VoicePipeline:
                 for attempt in range(attempts):
                     llm_attempts += 1
                     extractor = SpeechFieldExtractor()
+                    # followup 字段走第二个 extractor 实例，复用同一条流
+                    # ——契约里 followup 排在 speech 后，流上天然顺序到达。
+                    followup_ext = SpeechFieldExtractor("followup")
                     # 每轮新 chunker：中止的尝试不留残渣污染重试
                     chunker = ClauseChunker()
                     attempt_parts: list[str] = []
@@ -679,6 +685,7 @@ class VoicePipeline:
                     parse_error: Exception | None = None
                     gen_mark = len(utterance.generated)
                     piece_buf = ""
+                    followup_buf = ""
                     # 重试带纠错提示：模型在乱序/打断上下文里系统性退化
                     # 时（实测连吐 [1]/复读 user），同样输入再发一次只会
                     # 拿同样的垃圾——显式重申契约把它拽回来。
@@ -710,6 +717,11 @@ class VoicePipeline:
                         attempt_parts.append(token)
                         raw_parts.append(token)
                         piece = extractor.feed(token)
+                        fpiece = followup_ext.feed(token)
+                        if fpiece:
+                            # 追问先攒着、流完再过回声闸进队列——
+                            # 它是输出的最后一段，延迟代价为零。
+                            followup_buf += fpiece
                         if not piece:
                             continue
                         piece_buf += piece
@@ -728,18 +740,35 @@ class VoicePipeline:
                     if echo_aborted:
                         # 回滚已记账碎片，本轮 utterance 保持干净
                         utterance.generated = utterance.generated[:gen_mark]
-                    elif extracted:
+                        followup_buf = ""
+                    else:
+                        # followup 先过回声闸再进队列：复读式追问直接丢
+                        # （speech 本体好就不判整轮失败）。
+                        if followup_buf:
+                            fn = _norm_speech(followup_buf)
+                            if (
+                                user_norm
+                                and len(fn) >= 3
+                                and user_norm.startswith(fn)
+                            ):
+                                followup_buf = ""
+                            else:
+                                utterance.add_generated(followup_buf)
+                                for clause in chunker.feed(followup_buf):
+                                    chunk_q.put_nowait(clause)
+                        # flush 只进队列：尾部文本已随 piece 记账，
+                        # 不能再 add_generated（否则 generated 尾巴重复）。
                         for clause in chunker.flush():
-                            utterance.add_generated(clause)
                             chunk_q.put_nowait(clause)
-                        # 流结束时仍是用户原文的长前缀 → 半截复读
-                        bn = _norm_speech(piece_buf)
-                        if (
-                            user_norm
-                            and len(bn) >= 3
-                            and user_norm.startswith(bn)
-                        ):
-                            echo_aborted = True
+                        if extracted:
+                            # 流结束时仍是用户原文的长前缀 → 半截复读
+                            bn = _norm_speech(piece_buf)
+                            if (
+                                user_norm
+                                and len(bn) >= 3
+                                and user_norm.startswith(bn)
+                            ):
+                                echo_aborted = True
                     fallback = None
                     if not extracted and not echo_aborted:
                         try:
@@ -760,10 +789,17 @@ class VoicePipeline:
                                 utterance.add_generated(fallback.speech)
                                 for clause in chunker.feed(fallback.speech):
                                     chunk_q.put_nowait(clause)
+                                if fallback.followup:
+                                    utterance.add_generated(fallback.followup)
+                                    followup_buf = fallback.followup
+                                    for clause in chunker.feed(
+                                        fallback.followup
+                                    ):
+                                        chunk_q.put_nowait(clause)
                                 for clause in chunker.flush():
-                                    utterance.add_generated(clause)
                                     chunk_q.put_nowait(clause)
                                 break
+                    final_followup = followup_buf
                     if extracted and not echo_aborted:
                         break
                     if attempt + 1 < attempts:
@@ -830,12 +866,15 @@ class VoicePipeline:
             audio_task = None
 
             reply = parse_agent_reply("".join(last_parts))
-            noop = is_noop(reply)
+            # followup 用闸后实际交付值（回声追问已被丢）；speech 空但
+            # followup 非空 = 她只问了问题——不算 NOOP。
+            noop = is_noop(reply) and not final_followup.strip()
             self.bus.publish(
                 EventType.AGENT_REPLY,
                 {
                     "turn_id": turn_id,
                     "speech": reply.speech,
+                    "followup": final_followup.strip(),
                     "emotion": reply.emotion,
                     "energy": reply.energy,
                     "should_continue": reply.should_continue,

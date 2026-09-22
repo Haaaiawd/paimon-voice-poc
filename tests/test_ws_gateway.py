@@ -178,7 +178,7 @@ async def test_ws_text_turn_full_event_stream(tmp_path):
     reply = frames[i]
 
     # reply.final 字段 = AgentReply 原名（speech/emotion/energy），emotion ∈ §8 标签集
-    assert set(reply) == {"type", "speech", "emotion", "energy"}
+    assert set(reply) == {"type", "speech", "followup", "emotion", "energy"}
     assert USER_TEXT[:20] in reply["speech"]  # mock reply 回显用户文本
     assert reply["emotion"] in EMOTION_LABELS
     assert isinstance(reply["energy"], (int, float))
@@ -228,7 +228,7 @@ async def test_ws_contract_vocabulary_alignment(tmp_path):
         if f["type"] == "state":
             assert f["state"] in PIPELINE_STATES
         if f["type"] == "reply.final":
-            assert set(f) == {"type", "speech", "emotion", "energy"}
+            assert set(f) == {"type", "speech", "followup", "emotion", "energy"}
             assert f["emotion"] in EMOTION_LABELS
 
     # 前端上行：WsBackend 只发 §4.2 词汇
@@ -292,6 +292,6 @@ async def test_http_chat_smoke_bypass(tmp_path):
             resp = await client.post("/chat", json={"text": USER_TEXT})
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body) == {"speech", "emotion", "energy"}
+    assert set(body) == {"speech", "followup", "emotion", "energy"}
     assert body["emotion"] in EMOTION_LABELS
     assert USER_TEXT[:20] in body["speech"]

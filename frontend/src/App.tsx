@@ -91,10 +91,13 @@ function reducer(state: ChatState, action: Action): ChatState {
         }
         case 'reply.delta': {
           if (!f.text) return { ...state, typing: false }; // 空增量不建气泡
-          // Fold deltas into a single streaming Paimon bubble.
+          // speech 增量进主气泡；followup 增量进第二气泡（追问）。
           const last = state.messages[state.messages.length - 1];
+          const isFollowup = f.field === 'followup';
           if (last?.role === 'paimon' && last.streaming) {
-            const merged = { ...last, text: last.text + f.text };
+            const merged = isFollowup
+              ? { ...last, followup: (last.followup ?? '') + f.text }
+              : { ...last, text: last.text + f.text };
             return {
               ...state,
               typing: false,
@@ -106,22 +109,34 @@ function reducer(state: ChatState, action: Action): ChatState {
             typing: false,
             messages: [
               ...state.messages,
-              { id: uid(), role: 'paimon', text: f.text, streaming: true },
+              {
+                id: uid(),
+                role: 'paimon',
+                text: isFollowup ? '' : f.text,
+                followup: isFollowup ? f.text : undefined,
+                streaming: true,
+              },
             ],
           };
         }
         case 'reply.final': {
           const reply: AgentReply = {
             speech: f.speech,
+            followup: f.followup,
             emotion: f.emotion,
             energy: f.energy,
           };
           const last = state.messages[state.messages.length - 1];
-          // NOOP：模型选择不说（speech 空）。reply.final 是轮次生命周期
-          // 信号必须照常消费，但不渲染空气泡；若有空的 streaming 残留
-          // 气泡一并清掉。
-          if (!reply.speech.trim()) {
-            if (last?.role === 'paimon' && last.streaming && !last.text.trim()) {
+          // NOOP：模型选择不说（speech 空且无追问）。reply.final 是轮次
+          // 生命周期信号必须照常消费，但不渲染空气泡；若有空的
+          // streaming 残留气泡一并清掉。
+          if (!reply.speech.trim() && !(reply.followup ?? '').trim()) {
+            if (
+              last?.role === 'paimon' &&
+              last.streaming &&
+              !last.text.trim() &&
+              !(last.followup ?? '').trim()
+            ) {
               return {
                 ...state,
                 typing: false,
@@ -131,7 +146,13 @@ function reducer(state: ChatState, action: Action): ChatState {
             return { ...state, typing: false };
           }
           if (last?.role === 'paimon' && last.streaming) {
-            const done = { ...last, text: reply.speech, reply, streaming: false };
+            const done = {
+              ...last,
+              text: reply.speech,
+              followup: reply.followup ?? last.followup,
+              reply,
+              streaming: false,
+            };
             return {
               ...state,
               typing: false,
@@ -143,7 +164,13 @@ function reducer(state: ChatState, action: Action): ChatState {
             typing: false,
             messages: [
               ...state.messages,
-              { id: uid(), role: 'paimon', text: reply.speech, reply },
+              {
+                id: uid(),
+                role: 'paimon',
+                text: reply.speech,
+                followup: reply.followup,
+                reply,
+              },
             ],
           };
         }

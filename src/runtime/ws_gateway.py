@@ -109,21 +109,25 @@ class _SpeechDeltaTap:
     """
 
     def __init__(
-        self, agent: CharacterAgent, on_delta: Callable[[str], None]
+        self, agent: CharacterAgent, on_delta: Callable[[str, str], None]
     ) -> None:
         object.__setattr__(self, "_agent", agent)
         object.__setattr__(self, "_on_delta", on_delta)
 
     def stream_reply(self, messages: Any, **kwargs: Any) -> AsyncIterator[str]:
-        extractor = SpeechFieldExtractor()
+        speech_ext = SpeechFieldExtractor()
+        followup_ext = SpeechFieldExtractor("followup")
         on_delta = self._on_delta
         inner = self._agent.stream_reply(messages, **kwargs)
 
         async def gen() -> AsyncIterator[str]:
             async for token in inner:
-                piece = extractor.feed(token)
+                piece = speech_ext.feed(token)
                 if piece:
-                    on_delta(piece)
+                    on_delta(piece, "speech")
+                fpiece = followup_ext.feed(token)
+                if fpiece:
+                    on_delta(fpiece, "followup")
                 yield token
 
         return gen()
@@ -212,6 +216,7 @@ def project_event(
                 {
                     "type": "reply.final",
                     "speech": p.get("speech", ""),
+                    "followup": p.get("followup", ""),
                     "emotion": p.get("emotion") or "neutral",
                     "energy": p.get("energy") or 0.0,
                 }
@@ -331,9 +336,9 @@ class GatewayRuntime:
     def remove_delta_sink(self, sink: Callable[[str], None]) -> None:
         self._delta_sinks.discard(sink)
 
-    def _emit_delta(self, piece: str) -> None:
+    def _emit_delta(self, piece: str, field: str = "speech") -> None:
         for sink in list(self._delta_sinks):
-            sink(piece)
+            sink(piece, field)
 
     def add_audio_sink(self, sink: Callable[[bytes, str], None]) -> None:
         self._audio_sinks.add(sink)
@@ -397,8 +402,10 @@ class ChatSession:
         for frame in project_event(event, self._rt.metrics):
             self._outbox.put_nowait(frame)
 
-    def _on_delta(self, piece: str) -> None:
-        self._outbox.put_nowait({"type": "reply.delta", "text": piece})
+    def _on_delta(self, piece: str, field: str = "speech") -> None:
+        self._outbox.put_nowait(
+            {"type": "reply.delta", "text": piece, "field": field}
+        )
 
     def _on_audio(self, pcm: bytes, format: str) -> None:
         """§4.3 audio.chunk：头帧紧跟二进制负载，seq 逐块递增。"""
@@ -472,6 +479,7 @@ async def post_chat(request: Request) -> JSONResponse:
             future.set_result(
                 {
                     "speech": event.payload.get("speech", ""),
+                    "followup": event.payload.get("followup", ""),
                     "emotion": event.payload.get("emotion") or "neutral",
                     "energy": event.payload.get("energy") or 0.0,
                 }
