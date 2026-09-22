@@ -25,6 +25,7 @@ LatencyLog；t_llm_request / prompt_prebuilt_at / speculative 为扩展口径。
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Callable
@@ -45,6 +46,22 @@ from providers.llm.base import StructuredOutputError, parse_agent_reply
 
 #: 结构化输出走 json_object 模式（与 CharacterAgent.respond 同一口径）。
 _JSON_OBJECT_FORMAT = {"type": "json_object"}
+
+
+def _looks_like_contract(text: str) -> bool:
+    """输出是否符合契约形：dict 含 speech 键，或字符串/字符串数组降级
+    （parse_agent_reply 的合法降级面）。数字/数字数组这类垃圾 → False。"""
+    try:
+        parsed = json.loads(text.strip())
+    except (json.JSONDecodeError, ValueError):
+        return '"speech"' in text  # 坏 JSON 但带字段 → 打捞路径已兜过
+    if isinstance(parsed, dict):
+        return "speech" in parsed
+    if isinstance(parsed, str):
+        return True
+    if isinstance(parsed, list):
+        return bool(parsed) and all(isinstance(x, str) for x in parsed)
+    return False
 
 #: heard-history 的 audio_s 估计：音频到达时按"最早未饱和 segment"分配，
 #: 饱和阈值 = len(text) * 秒/字。中文 TTS 约 4–5 字/秒，取 0.22s/字做
@@ -653,8 +670,24 @@ class VoicePipeline:
                     last_parts = attempt_parts
                     extracted = False
                     parse_error: Exception | None = None
+                    # 重试带纠错提示：模型在乱序/打断上下文里系统性退化
+                    # 时（实测连吐 [1]/[30.142,65.798]），同样输入再发一次
+                    # 只会拿同样的垃圾——显式重申契约把它拽回来。
+                    stream_messages = (
+                        messages
+                        if attempt == 0
+                        else [
+                            *messages,
+                            {
+                                "role": "user",
+                                "content": "上一条输出格式不对，重说。"
+                                '只输出 JSON 对象 {"speech","emotion",'
+                                '"energy","should_continue"}。',
+                            },
+                        ]
+                    )
                     async for token in self._agent.stream_reply(
-                        messages,
+                        stream_messages,
                         response_format=_JSON_OBJECT_FORMAT,
                         **self._llm_params,
                     ):
@@ -688,6 +721,13 @@ class VoicePipeline:
                         continue
                     if parse_error is not None:
                         raise parse_error
+                    # 最后一次尝试仍是垃圾（非契约形的非空输出）：
+                    # 显式报错让前端看到，不再伪装成"她选择沉默"。
+                    attempt_raw = "".join(attempt_parts).strip()
+                    if attempt_raw and not _looks_like_contract(attempt_raw):
+                        raise StructuredOutputError(
+                            f"garbage reply after retry: {attempt_raw[:200]}"
+                        )
                 for clause in chunker.flush():
                     utterance.add_generated(clause)
                     chunk_q.put_nowait(clause)

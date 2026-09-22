@@ -618,8 +618,8 @@ async def test_garbage_llm_output_retries_once(tmp_path):
     assert "[1]" in closed[-1].extra.get("raw", "")  # 首轮垃圾留痕
 
 
-async def test_garbage_twice_becomes_recorded_noop(tmp_path):
-    """两次都吐垃圾 → 认 NOOP，raw 留痕可查。"""
+async def test_garbage_twice_surfaces_error(tmp_path):
+    """两次都吐垃圾 → 不伪装沉默：显式 error + raw 留痕可查。"""
     frames = (
         [silence_frame() for _ in range(2)]
         + [tone_frame() for _ in range(26)]
@@ -635,8 +635,9 @@ async def test_garbage_twice_becomes_recorded_noop(tmp_path):
     await run_pipeline(pipeline)
 
     assert len(llm.requests) == 2
-    assert player.written_seconds == 0  # 没有空气泡式输出
+    assert player.written_seconds == 0
     closed = [r for r in metrics.records if r.closed]
     assert closed[-1].reply_speech == ""
-    assert closed[-1].extra.get("noop") is True
+    assert closed[-1].stop_reason == "error"  # 垃圾输出不再装成沉默
     assert "[1]" in closed[-1].extra.get("raw", "")
+    assert any("garbage reply" in e for e in pipeline.errors)
