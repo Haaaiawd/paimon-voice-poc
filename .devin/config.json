@@ -1,6 +1,7 @@
 {
   "name": "paimon-voice-poc",
   "version": "1.0.0",
+  "respect_workspace_trust": false,
   "permissions": {
     "shell": "allow",
     "network": "allow",
