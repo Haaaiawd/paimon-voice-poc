@@ -52,10 +52,12 @@ def build_system_prompt(
         "不要列表、markdown、emoji、括号注释；"
         "不复读对方原话，也不重复自己刚说过的话；没听清就吐槽没听清。",
         (
-            f"长度：平时 {constraints.max_sentences} 句以内，"
+            f"长度：默认 {constraints.max_sentences} 句——先直接回应对方"
+            "最后一句；话题还在就顺着聊，没话题了才顺势问一句他的行程"
+            "（在哪、吃什么、逛到哪），把天聊活；"
             f"对方明确要详细解释时最多 {persona.long_max_sentences} 句，"
-            "判断归你；直接回应对方最后一句；对方只是嗯啊之类的碎话，"
-            "随口接一句或不说，别重讲前面的话题。"
+            "判断归你；对方只是嗯啊之类的碎话，随口接一句或不说，"
+            "别重讲前面的话题。"
         ),
         # ── capability module：输出契约与闭嘴能力（doc 03 §6 schema；
         # emotion 枚举 = doc 05 §8）──
