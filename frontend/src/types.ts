@@ -78,6 +78,12 @@ export type ServerFrame =
   | { type: 'latency'; sefa_ms: number; barge_in_ms: number }
   | { type: 'error'; message: string };
 
+/** Header meta of a §4.3 audio.chunk frame; its payload rides a binary frame. */
+export interface AudioChunkMeta {
+  seq: number;
+  format: string;
+}
+
 export const SERVER_FRAME_TYPES = [
   'state',
   'asr.partial',

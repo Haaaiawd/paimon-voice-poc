@@ -1,145 +1,145 @@
 {
- "schema_version": 2,
- "deliverables": [
-  {
-   "id": "DLV-001",
-   "slug": "voice-runtime-pipeline",
-   "title": "实时语音流水线：麦克风→VAD→Turn→ASR→播放（Pipecat 组装）",
-   "kind": "module",
-   "notes": "ASR 段就绪（TASK-007，2026-09-22）：DashScopeASR 经真实百炼端点验证，partial/final 实时流 + 785ms 首事件延迟；待 TASK-008 TTS 与 TASK-010 管线组装。 | TASK-010 完成(2026-09-22)：src/runtime/pipeline.py 全链路组装（audio→VAD→SmartTurn→ASR→ContextManager→LLM speech字段流式抽取→分句→TTS→playback），barge-in 安全（先发布 USER_SPEECH_STARTED 再 await 裁决）；src/runtime/{main,mic,playback,simulated}.py CLI+mic/file/mock 三模式；无设备降级 WavSinkPlayer，provider 401→PIPELINE_ERROR 干净退出。",
-   "covered_by": [
-    "TASK-004",
-    "TASK-007",
-    "TASK-008",
-    "TASK-010"
-   ],
-   "created_at": "2026-09-21T13:01:50.536Z"
-  },
-  {
-   "id": "DLV-002",
-   "slug": "conversation-core",
-   "title": "Conversation Core：TurnManager/InterruptionManager/InitiativePolicy/ContextManager/状态机",
-   "kind": "module",
-   "notes": "",
-   "covered_by": [
-    "TASK-005",
-    "TASK-006"
-   ],
-   "created_at": "2026-09-21T13:01:50.702Z"
-  },
-  {
-   "id": "DLV-003",
-   "slug": "provider-adapters",
-   "title": "ASR/LLM/TTS Provider 抽象与 adapter 层",
-   "kind": "interface",
-   "notes": "TASK-002 完成(2026-09-21)：ASRProvider（ASREvent 仅 partial/final，streaming-asr-zh C3）、TTSProvider（stream_audio + cancel 停推/清 buffer/可重开契约，chinese-tts-eval C3）、LLMProvider（stream_reply + complete_structured→AgentReply）；OpenAICompatibleLLM 用 httpx SSE（trust_env=False 绕 Clash），pytest 9 项全过，src/ 非 adapter 目录零供应商 SDK import。TASK-007 完成(2026-09-22)：DashScopeASR（paraformer-realtime-v2 raw-websockets duplex，proxy=None 直连，C1/C2/C4 参数落地）真实端点实测通过；TTS 实现归 TASK-008。",
-   "covered_by": [
-    "TASK-002",
-    "TASK-007",
-    "TASK-008"
-   ],
-   "created_at": "2026-09-21T13:01:50.890Z"
-  },
-  {
-   "id": "DLV-004",
-   "slug": "paimon-persona",
-   "title": "派蒙人格：Behavior Policy、情绪标签、结构化 LLM 输出",
-   "kind": "feature",
-   "notes": "TASK-009 完成(2026-09-22)：src/character/ 落 Persona（身份/气质/长度基线/doc 05 §8 情绪标签集）+ BehaviorPolicy（§3-§7 规则面：短句默认、解释请求放宽、被打断标记、SILENCED 闸口、initiative-NOOP、显式覆盖）+ prompt 六槽位渲染（§10，无角色小说）+ CharacterAgent（doc 03 §5 输入→§6 AgentReply，speech 空=NOOP）。验收：pytest tests/test_persona.py 25 passed；真实 qwen-turbo 4 context 全部 schema 合法（emotion∈§8 标签集），initiative 冷场实测返回 NOOP。注：当前 .env 的 sk-ws-* key 为 workspace realtime 专用，chat/completions 拒收——live 测试自动 skip，实测用标准 key 完成。全仓 pytest 137 passed / 3 skipped。",
-   "covered_by": [
-    "TASK-009"
-   ],
-   "created_at": "2026-09-21T13:01:51.086Z"
-  },
-  {
-   "id": "DLV-005",
-   "slug": "barge-in",
-   "title": "端到端打断：停播/清 buffer/取消 LLM/heard history 记录",
-   "kind": "behavior",
-   "notes": "",
-   "covered_by": [
-    "TASK-006"
-   ],
-   "created_at": "2026-09-21T13:01:51.292Z"
-  },
-  {
-   "id": "DLV-006",
-   "slug": "initiative-behavior",
-   "title": "主动插话规则与 SILENCED 状态",
-   "kind": "behavior",
-   "notes": "TASK-011 完成(2026-09-22)：src/conversation/initiative.py 落地 doc 03 §2.3——InitiativePolicy 可解释评分(silence_duration+interesting_context+direct_mention+conversation_energy−recently_spoke)与硬规则 user_is_speaking/silenced/response_in_flight/cooldown/min_silence→NEVER_SPEAK；SilenceClassifier 纯规则消费 ASR_FINAL 发 SILENCE_REQUESTED（'两分钟'等时长解析覆盖默认窗口），SILENCED 中 ASR 持续转写、轮次照常裁决但不发 AGENT_CAN_RESPOND，'派蒙'直呼 wake 退出、超时 silence_timeout 兜底。VoicePipeline 订阅 INITIATIVE_TRIGGERED，仅 IDLE 放行一次 LLM 调用（可返回空 speech → NOOP）。pytest tests/test_initiative.py+tests/test_silenced.py 39 passed，全量 191 passed。",
-   "covered_by": [
-    "TASK-011"
-   ],
-   "created_at": "2026-09-21T13:01:51.507Z"
-  },
-  {
-   "id": "DLV-007",
-   "slug": "latency-metrics",
-   "title": "延迟指标：SEFA、barge-in stop latency、逐轮 latency log",
-   "kind": "module",
-   "notes": "TASK-010 完成(2026-09-22)：src/metrics/latency.py 逐轮九时间戳+prompt_prebuilt_at/t_llm_request/SEFA/barge_in_stop_ms/speculative(hit|miss|none)/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json(p50/p95)；real-turn 实测 SEFA=58.4ms、barge_in_stop=0.2ms。",
-   "covered_by": [
-    "TASK-010"
-   ],
-   "created_at": "2026-09-21T13:01:51.712Z"
-  },
-  {
-   "id": "DLV-008",
-   "slug": "terminal-ui",
-   "title": "Terminal UI：状态显示、对话流、延迟数字",
-   "kind": "interface",
-   "notes": "TASK-010 完成(2026-09-22)：src/runtime/terminal.py 按 doc 06 §2 输出状态标记[LISTENING]等、YOU 逐partial+(prompt prebuilt +Nms)、Turn COMPLETE/INCOMPLETE+(llm request, speculation=hit|miss)、ASR/LLM/TTS +Nms 偏移行、PAIMON(emotion)回复块、[INTERRUPTED +Nms]、[pipeline error]。",
-   "covered_by": [
-    "TASK-010"
-   ],
-   "created_at": "2026-09-21T13:01:51.890Z"
-  },
-  {
-   "id": "DLV-009",
-   "slug": "provider-benchmarks",
-   "title": "赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）",
-   "kind": "verification",
-   "notes": "",
-   "covered_by": [
-    "TASK-003"
-   ],
-   "created_at": "2026-09-21T13:01:52.064Z"
-  },
-  {
-   "id": "DLV-010",
-   "slug": "mvp-eval",
-   "title": "MVP 验收：测试用例 A–G + 10 分钟连续运行",
-   "kind": "verification",
-   "notes": "",
-   "covered_by": [
-    "TASK-012"
-   ],
-   "created_at": "2026-09-21T13:01:52.243Z"
-  },
-  {
-   "id": "DLV-011",
-   "slug": "dev-env",
-   "title": "开发环境：pyproject.toml、.env.example、依赖安装可跑通",
-   "kind": "operational",
-   "notes": "TASK-001 完成(2026-09-21)：pyproject requires-python>=3.12，deps=pipecat-ai/sounddevice/numpy/httpx/websockets/msgpack/dashscope；.venv pip install -e \".[dev]\" 成功，`python -c \"import pipecat, sounddevice\"` exit 0（Linux 宿主 PortAudio 经 .deb 解包进 .venv/lib + .pth shim，Windows wheel 自带）；.env.example 含 FISH/DASHSCOPE/DEEPSEEK 三 key 占位；`docker build -t paimon-voice .` + `docker run --rm paimon-voice python -c \"import pipecat\"` 通过。",
-   "covered_by": [
-    "TASK-001"
-   ],
-   "created_at": "2026-09-21T13:01:52.465Z"
-  },
-  {
-   "id": "DLV-012",
-   "slug": "demo-web-ui",
-   "title": "Web demo UI：Blackchalk 手绘气泡界面 + MockBackend/WsBackend（前端子目录 frontend/）",
-   "kind": "interface",
-   "notes": "TASK-016 完成：frontend/ 脚手架 + Blackchalk 气泡界面 + MockBackend。 | TASK-017 完成(2026-09-22)：src/runtime/ws_gateway.py（Starlette+uvicorn）实现 §4 契约——/ws/chat 双向 JSON + 二进制上行(阶段3) + POST /chat 旁路；user.text 经同构域事件序列注入 bus，裁决仍归 ConversationCore；reply.delta 由 _SpeechDeltaTap 外包 SpeechFieldExtractor 投影，pipeline 零改动。WsBackend.ts 接入真实网关（CONNECTING 排队 + 主动 close 不报 error）。契约一致性：tests/test_ws_gateway.py 4 passed，运行时断言帧名⊆types.ts 白名单、reply.final=AgentReply 原名、state 七态原名、emotion∈§8。",
-   "covered_by": [
-    "TASK-016",
-    "TASK-017",
-    "TASK-018"
-   ],
-   "created_at": "2026-09-22T03:06:55.232Z"
-  }
- ]
+  "schema_version": 2,
+  "deliverables": [
+    {
+      "id": "DLV-001",
+      "slug": "voice-runtime-pipeline",
+      "title": "实时语音流水线：麦克风→VAD→Turn→ASR→播放（Pipecat 组装）",
+      "kind": "module",
+      "notes": "ASR 段就绪（TASK-007，2026-09-22）：DashScopeASR 经真实百炼端点验证，partial/final 实时流 + 785ms 首事件延迟；待 TASK-008 TTS 与 TASK-010 管线组装。 | TASK-010 完成(2026-09-22)：src/runtime/pipeline.py 全链路组装（audio→VAD→SmartTurn→ASR→ContextManager→LLM speech字段流式抽取→分句→TTS→playback），barge-in 安全（先发布 USER_SPEECH_STARTED 再 await 裁决）；src/runtime/{main,mic,playback,simulated}.py CLI+mic/file/mock 三模式；无设备降级 WavSinkPlayer，provider 401→PIPELINE_ERROR 干净退出。",
+      "covered_by": [
+        "TASK-004",
+        "TASK-007",
+        "TASK-008",
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:50.536Z"
+    },
+    {
+      "id": "DLV-002",
+      "slug": "conversation-core",
+      "title": "Conversation Core：TurnManager/InterruptionManager/InitiativePolicy/ContextManager/状态机",
+      "kind": "module",
+      "notes": "",
+      "covered_by": [
+        "TASK-005",
+        "TASK-006"
+      ],
+      "created_at": "2026-09-21T13:01:50.702Z"
+    },
+    {
+      "id": "DLV-003",
+      "slug": "provider-adapters",
+      "title": "ASR/LLM/TTS Provider 抽象与 adapter 层",
+      "kind": "interface",
+      "notes": "TASK-002 完成(2026-09-21)：ASRProvider（ASREvent 仅 partial/final，streaming-asr-zh C3）、TTSProvider（stream_audio + cancel 停推/清 buffer/可重开契约，chinese-tts-eval C3）、LLMProvider（stream_reply + complete_structured→AgentReply）；OpenAICompatibleLLM 用 httpx SSE（trust_env=False 绕 Clash），pytest 9 项全过，src/ 非 adapter 目录零供应商 SDK import。TASK-007 完成(2026-09-22)：DashScopeASR（paraformer-realtime-v2 raw-websockets duplex，proxy=None 直连，C1/C2/C4 参数落地）真实端点实测通过；TTS 实现归 TASK-008。",
+      "covered_by": [
+        "TASK-002",
+        "TASK-007",
+        "TASK-008"
+      ],
+      "created_at": "2026-09-21T13:01:50.890Z"
+    },
+    {
+      "id": "DLV-004",
+      "slug": "paimon-persona",
+      "title": "派蒙人格：Behavior Policy、情绪标签、结构化 LLM 输出",
+      "kind": "feature",
+      "notes": "TASK-009 完成(2026-09-22)：src/character/ 落 Persona（身份/气质/长度基线/doc 05 §8 情绪标签集）+ BehaviorPolicy（§3-§7 规则面：短句默认、解释请求放宽、被打断标记、SILENCED 闸口、initiative-NOOP、显式覆盖）+ prompt 六槽位渲染（§10，无角色小说）+ CharacterAgent（doc 03 §5 输入→§6 AgentReply，speech 空=NOOP）。验收：pytest tests/test_persona.py 25 passed；真实 qwen-turbo 4 context 全部 schema 合法（emotion∈§8 标签集），initiative 冷场实测返回 NOOP。注：当前 .env 的 sk-ws-* key 为 workspace realtime 专用，chat/completions 拒收——live 测试自动 skip，实测用标准 key 完成。全仓 pytest 137 passed / 3 skipped。",
+      "covered_by": [
+        "TASK-009"
+      ],
+      "created_at": "2026-09-21T13:01:51.086Z"
+    },
+    {
+      "id": "DLV-005",
+      "slug": "barge-in",
+      "title": "端到端打断：停播/清 buffer/取消 LLM/heard history 记录",
+      "kind": "behavior",
+      "notes": "",
+      "covered_by": [
+        "TASK-006"
+      ],
+      "created_at": "2026-09-21T13:01:51.292Z"
+    },
+    {
+      "id": "DLV-006",
+      "slug": "initiative-behavior",
+      "title": "主动插话规则与 SILENCED 状态",
+      "kind": "behavior",
+      "notes": "TASK-011 完成(2026-09-22)：src/conversation/initiative.py 落地 doc 03 §2.3——InitiativePolicy 可解释评分(silence_duration+interesting_context+direct_mention+conversation_energy−recently_spoke)与硬规则 user_is_speaking/silenced/response_in_flight/cooldown/min_silence→NEVER_SPEAK；SilenceClassifier 纯规则消费 ASR_FINAL 发 SILENCE_REQUESTED（'两分钟'等时长解析覆盖默认窗口），SILENCED 中 ASR 持续转写、轮次照常裁决但不发 AGENT_CAN_RESPOND，'派蒙'直呼 wake 退出、超时 silence_timeout 兜底。VoicePipeline 订阅 INITIATIVE_TRIGGERED，仅 IDLE 放行一次 LLM 调用（可返回空 speech → NOOP）。pytest tests/test_initiative.py+tests/test_silenced.py 39 passed，全量 191 passed。",
+      "covered_by": [
+        "TASK-011"
+      ],
+      "created_at": "2026-09-21T13:01:51.507Z"
+    },
+    {
+      "id": "DLV-007",
+      "slug": "latency-metrics",
+      "title": "延迟指标：SEFA、barge-in stop latency、逐轮 latency log",
+      "kind": "module",
+      "notes": "TASK-010 完成(2026-09-22)：src/metrics/latency.py 逐轮九时间戳+prompt_prebuilt_at/t_llm_request/SEFA/barge_in_stop_ms/speculative(hit|miss|none)/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json(p50/p95)；real-turn 实测 SEFA=58.4ms、barge_in_stop=0.2ms。",
+      "covered_by": [
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:51.712Z"
+    },
+    {
+      "id": "DLV-008",
+      "slug": "terminal-ui",
+      "title": "Terminal UI：状态显示、对话流、延迟数字",
+      "kind": "interface",
+      "notes": "TASK-010 完成(2026-09-22)：src/runtime/terminal.py 按 doc 06 §2 输出状态标记[LISTENING]等、YOU 逐partial+(prompt prebuilt +Nms)、Turn COMPLETE/INCOMPLETE+(llm request, speculation=hit|miss)、ASR/LLM/TTS +Nms 偏移行、PAIMON(emotion)回复块、[INTERRUPTED +Nms]、[pipeline error]。",
+      "covered_by": [
+        "TASK-010"
+      ],
+      "created_at": "2026-09-21T13:01:51.890Z"
+    },
+    {
+      "id": "DLV-009",
+      "slug": "provider-benchmarks",
+      "title": "赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）",
+      "kind": "verification",
+      "notes": "",
+      "covered_by": [
+        "TASK-003"
+      ],
+      "created_at": "2026-09-21T13:01:52.064Z"
+    },
+    {
+      "id": "DLV-010",
+      "slug": "mvp-eval",
+      "title": "MVP 验收：测试用例 A–G + 10 分钟连续运行",
+      "kind": "verification",
+      "notes": "",
+      "covered_by": [
+        "TASK-012"
+      ],
+      "created_at": "2026-09-21T13:01:52.243Z"
+    },
+    {
+      "id": "DLV-011",
+      "slug": "dev-env",
+      "title": "开发环境：pyproject.toml、.env.example、依赖安装可跑通",
+      "kind": "operational",
+      "notes": "TASK-001 完成(2026-09-21)：pyproject requires-python>=3.12，deps=pipecat-ai/sounddevice/numpy/httpx/websockets/msgpack/dashscope；.venv pip install -e \".[dev]\" 成功，`python -c \"import pipecat, sounddevice\"` exit 0（Linux 宿主 PortAudio 经 .deb 解包进 .venv/lib + .pth shim，Windows wheel 自带）；.env.example 含 FISH/DASHSCOPE/DEEPSEEK 三 key 占位；`docker build -t paimon-voice .` + `docker run --rm paimon-voice python -c \"import pipecat\"` 通过。",
+      "covered_by": [
+        "TASK-001"
+      ],
+      "created_at": "2026-09-21T13:01:52.465Z"
+    },
+    {
+      "id": "DLV-012",
+      "slug": "demo-web-ui",
+      "title": "Web demo UI：Blackchalk 手绘气泡界面 + MockBackend/WsBackend（前端子目录 frontend/）",
+      "kind": "interface",
+      "notes": "TASK-016 完成：frontend/ 脚手架 + Blackchalk 气泡界面 + MockBackend。 | TASK-017 完成(2026-09-22)：src/runtime/ws_gateway.py（Starlette+uvicorn）实现 §4 契约——/ws/chat 双向 JSON + 二进制上行(阶段3) + POST /chat 旁路；user.text 经同构域事件序列注入 bus，裁决仍归 ConversationCore；reply.delta 由 _SpeechDeltaTap 外包 SpeechFieldExtractor 投影，pipeline 零改动。WsBackend.ts 接入真实网关（CONNECTING 排队 + 主动 close 不报 error）。契约一致性：tests/test_ws_gateway.py 4 passed，运行时断言帧名⊆types.ts 白名单、reply.final=AgentReply 原名、state 七态原名、emotion∈§8。 | TASK-018 完成(2026-09-22)：阶段3——MicCapture(AudioWorklet→PCM 16kHz/16bit/mono 80ms 帧→user.audio.start/end+二进制上行)、ReplyPlayer(audio.chunk 二进制按轮聚合→WAV→HTMLAudioElement+Waveform 手绘波形/播放头)、barge-in(SPEAKING 开麦本地即停播+interrupted 帧停播清缓冲)、MemorySidebar(mock facts/sessions/paimon_state，MEMORY_SYSTEM_DESIGN §4 形状)。ChatBackend+WsBackend+MockBackend 全接口扩展；MockBackend 发合成 pcm24k 音频使播放链路可演练。Playwright 冒烟全绿零 console error；typecheck/build 过。已知缺口：ws_gateway 尚未向 WS 下行 audio.chunk（TTS 走本地声卡/WavSink），前端契约就绪待后端补投影。",
+      "covered_by": [
+        "TASK-016",
+        "TASK-017",
+        "TASK-018"
+      ],
+      "created_at": "2026-09-22T03:06:55.232Z"
+    }
+  ]
 }

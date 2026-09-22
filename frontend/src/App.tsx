@@ -5,6 +5,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from 'react';
 import { SketchPageHeader, SketchPaper } from 'blackchalk';
@@ -18,8 +19,13 @@ import type {
 import type { ChatBackend } from './backend/ChatBackend';
 import { MockBackend } from './backend/MockBackend';
 import { WsBackend } from './backend/WsBackend';
+import { MicCapture } from './audio/MicCapture';
+import { ReplyPlayer, type NowPlaying } from './audio/ReplyPlayer';
+import { MOCK_MEMORY } from './mocks/memory';
 import { ChatList } from './components/ChatList';
 import { Composer } from './components/Composer';
+import { MemorySidebar } from './components/MemorySidebar';
+import { NowPlayingBar } from './components/NowPlayingBar';
 import { StateBar } from './components/StateBar';
 
 // ---- state (useReducer + Context — FRONTEND_DEMO_DESIGN.md §1.2) ----
@@ -31,6 +37,13 @@ interface ChatState {
   typing: boolean;
   notices: Notice[];
   lastSefaMs: number | null;
+  /**
+   * Text of the last locally-sent user message awaiting its asr.final echo.
+   * ws_gateway projects text sends back as asr.final; we skip that echo so
+   * typed text isn't double-rendered — but a voice turn's asr.final is the
+   * only place the user's spoken utterance appears, so it must render.
+   */
+  pendingEcho: string | null;
 }
 
 type Action =
@@ -46,6 +59,7 @@ function reducer(state: ChatState, action: Action): ChatState {
     case 'user.sent':
       return {
         ...state,
+        pendingEcho: action.text,
         messages: [
           ...state.messages,
           { id: action.id, role: 'user', text: action.text },
@@ -61,6 +75,19 @@ function reducer(state: ChatState, action: Action): ChatState {
       switch (f.type) {
         case 'state':
           return { ...state, pipeline: f.state, typing: f.state === 'THINKING' };
+        case 'asr.final': {
+          if (state.pendingEcho !== null && f.text === state.pendingEcho) {
+            return { ...state, pendingEcho: null };
+          }
+          return {
+            ...state,
+            pendingEcho: null,
+            messages: [
+              ...state.messages,
+              { id: uid(), role: 'user', text: f.text },
+            ],
+          };
+        }
         case 'reply.delta': {
           // Fold deltas into a single streaming Paimon bubble.
           const last = state.messages[state.messages.length - 1];
@@ -123,9 +150,9 @@ function reducer(state: ChatState, action: Action): ChatState {
               { id: uid(), text: `连接异常：${f.message}` },
             ],
           };
-        // asr.* / audio.chunk: contract vocabulary the bubble UI doesn't render yet.
+        // asr.partial / audio.chunk: partials aren't rendered; audio chunk
+        // payloads arrive as binary frames on the backend's onAudio channel.
         case 'asr.partial':
-        case 'asr.final':
         case 'audio.chunk':
           return state;
       }
@@ -136,7 +163,13 @@ function reducer(state: ChatState, action: Action): ChatState {
 interface ChatContextValue {
   state: ChatState;
   send: (text: string) => void;
-  simulateMic: () => void;
+  recording: boolean;
+  micLevel: number;
+  toggleVoice: () => void;
+  nowPlaying: NowPlaying | null;
+  stopPlayback: () => void;
+  memoryOpen: boolean;
+  toggleMemory: () => void;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -172,16 +205,50 @@ function ChatProvider({ children }: { children: ReactNode }) {
     typing: false,
     notices: [],
     lastSefaMs: null,
+    pendingEcho: null,
   });
   const backendRef = useRef<ChatBackend | null>(null);
+  const micRef = useRef(new MicCapture());
+  const playerRef = useRef(new ReplyPlayer());
+  const [recording, setRecording] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  // Latest pipeline state for use inside stable callbacks (barge-in check).
+  const pipelineRef = useRef<PipelineState>('IDLE');
+  pipelineRef.current = state.pipeline;
 
   useEffect(() => {
     const backend = makeBackend();
     backendRef.current = backend;
-    const off = backend.onFrame((frame) => dispatch({ kind: 'frame', frame }));
+    const player = playerRef.current;
+
+    const handleFrame = (frame: ServerFrame) => {
+      dispatch({ kind: 'frame', frame });
+      // Audio playback lifecycle (stage 3): buffered PCM flushes into an
+      // HTMLAudioElement at the turn boundary; barge-in drops everything.
+      if (frame.type === 'interrupted') {
+        player.stopAll();
+      } else if (
+        (frame.type === 'latency' || frame.type === 'state') &&
+        (frame.type === 'latency' || frame.state !== 'SPEAKING') &&
+        player.buffered
+      ) {
+        player.endTurn();
+      }
+    };
+    const offFrame = backend.onFrame(handleFrame);
+    const offAudio = backend.onAudio((payload, meta) =>
+      player.push(payload, meta.format),
+    );
+    const offPlayer = player.onState(setNowPlaying);
     backend.connect();
     return () => {
-      off();
+      offFrame();
+      offAudio();
+      offPlayer();
+      void micRef.current.stop();
+      player.stopAll();
       backend.close();
     };
   }, []);
@@ -194,19 +261,48 @@ function ChatProvider({ children }: { children: ReactNode }) {
         dispatch({ kind: 'user.sent', text, id });
         backendRef.current?.sendText(text, id);
       },
-      simulateMic: () => {
-        // Mic is visual-only this stage: 2s fake LISTENING then an honest notice.
-        dispatch({ kind: 'frame', frame: { type: 'state', state: 'LISTENING' } });
-        window.setTimeout(() => {
-          dispatch({ kind: 'frame', frame: { type: 'state', state: 'IDLE' } });
-          dispatch({
-            kind: 'notice',
-            text: '语音输入 demo 阶段还没接通——先打字聊吧',
+      recording,
+      micLevel,
+      toggleVoice: () => {
+        const backend = backendRef.current;
+        if (!backend) return;
+        if (recording) {
+          backend.sendAudioEnd();
+          void micRef.current.stop();
+          setRecording(false);
+          setMicLevel(0);
+          return;
+        }
+        backend.sendAudioStart();
+        // Local half of barge-in: user starts talking → Paimon hushes now,
+        // without waiting for the server's interrupted frame.
+        if (pipelineRef.current === 'SPEAKING') playerRef.current.stopAll();
+        micRef.current
+          .start(
+            (pcm) =>
+              backend.sendAudioChunk(
+                pcm.buffer.slice(
+                  pcm.byteOffset,
+                  pcm.byteOffset + pcm.byteLength,
+                ) as ArrayBuffer,
+              ),
+            setMicLevel,
+          )
+          .then(() => setRecording(true))
+          .catch(() => {
+            backend.sendAudioEnd();
+            dispatch({
+              kind: 'notice',
+              text: '麦克风没接通——检查浏览器权限，或先打字聊',
+            });
           });
-        }, 2000);
       },
+      nowPlaying,
+      stopPlayback: () => playerRef.current.stopAll(),
+      memoryOpen,
+      toggleMemory: () => setMemoryOpen((v) => !v),
     }),
-    [state],
+    [state, recording, micLevel, nowPlaying, memoryOpen],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
@@ -221,27 +317,53 @@ export default function App() {
 }
 
 function Page() {
-  const { state, send, simulateMic } = useChat();
+  const {
+    state,
+    send,
+    recording,
+    micLevel,
+    toggleVoice,
+    nowPlaying,
+    stopPlayback,
+    memoryOpen,
+    toggleMemory,
+  } = useChat();
 
   return (
     <div className="page">
       <SketchPageHeader
         title="派蒙 Voice PoC"
-        description="Blackchalk 手绘风 demo · 阶段 1（mock）"
+        description="Blackchalk 手绘风 demo · 阶段 3（语音上行 + 播放 + 记忆 UI）"
       />
-      <StateBar
-        state={state.pipeline}
-        backendKind={BACKEND_KIND}
-        lastSefaMs={state.lastSefaMs}
-      />
-      <SketchPaper className="chat-paper">
-        <ChatList
-          messages={state.messages}
-          typing={state.typing}
-          notices={state.notices}
-        />
-      </SketchPaper>
-      <Composer disabled={false} onSend={send} onMic={simulateMic} />
+      <div className="content-row">
+        <div className="chat-col">
+          <StateBar
+            state={state.pipeline}
+            backendKind={BACKEND_KIND}
+            lastSefaMs={state.lastSefaMs}
+            memoryOpen={memoryOpen}
+            onToggleMemory={toggleMemory}
+          />
+          <NowPlayingBar playing={nowPlaying} onStop={stopPlayback} />
+          <SketchPaper className="chat-paper">
+            <ChatList
+              messages={state.messages}
+              typing={state.typing}
+              notices={state.notices}
+            />
+          </SketchPaper>
+          <Composer
+            disabled={false}
+            recording={recording}
+            micLevel={micLevel}
+            onSend={send}
+            onMicToggle={toggleVoice}
+          />
+        </div>
+        {memoryOpen && (
+          <MemorySidebar memory={MOCK_MEMORY} onClose={toggleMemory} />
+        )}
+      </div>
     </div>
   );
 }

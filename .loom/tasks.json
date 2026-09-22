@@ -217,7 +217,7 @@
           "默认模型切换为 qwen3.7-flash（da919a6）",
           "兜底标准 key 已写入 .env（额度少，优先用官方 key）"
         ],
-        "current": "ready: DASHSCOPE_API_KEY 已配置（兜底 key 可用），可运行 .venv/bin/python scripts/bench_llm.py 产出 qwen3.7-flash 延迟画像",
+        "current": "interrupted: 实现与单测完成，benchmark 实测未跑（会话中断，非 blocked）",
         "next": "运行 .venv/bin/python scripts/bench_llm.py --runs 20 产出 TTFT mean/p50/p95 + 结构化成功率"
       },
       "evidence": [
@@ -226,7 +226,7 @@
         "结果已落盘 data/llm_benchmark/bench_20260921T183917Z.json + latest.json + latest.md"
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T18:39:50.311Z",
+      "updated_at": "2026-09-22T03:46:10.000Z",
       "block": {}
     },
     {
@@ -1160,22 +1160,22 @@
         {
           "criterion": "麦克风按钮接通真实音频采集，PCM 16kHz/16bit/mono 上行至后端",
           "verify_by": "人工语音输入，确认后端收到音频帧",
-          "evidence": ""
+          "evidence": "frontend/src/audio/MicCapture.ts：getUserMedia→AudioContext→AudioWorklet→resampleToS16→1280-sample(80ms) Int16 帧；Composer 麦克风按钮 → toggleVoice → backend.sendAudioStart + sendAudioChunk(二进制) + sendAudioEnd。Playwright fake-device 实测：开窗/上行/关窗全链路无报错，语音轮次触发后端回复。"
         },
         {
           "criterion": "TTS 音频播放：后端返回 audio.chunk 后前端可播放",
           "verify_by": "人工触发 TTS 回复，确认听到声音",
-          "evidence": ""
+          "evidence": "ReplyPlayer.push(meta.format→rate)+endTurn→pcmToWavBlob→HTMLAudioElement.play()；NowPlayingBar+Waveform 渲染波形与播放头。Playwright 实测 .now-playing 出现、无 console 错误。注：mock 后端发合成 pcm24k；真网关暂未下行 audio.chunk（后端缺口，TODO.md 已记）。"
         },
         {
           "criterion": "情绪可视化：每条回复的情绪标签以手绘风 UI 表达",
           "verify_by": "人工观察不同情绪标签的 UI 表现",
-          "evidence": ""
+          "evidence": "EmotionBadge 单色图标+文字标签覆盖 §8 八标签集（neutral/happy/excited/teasing/annoyed/confused/smug/soft），emotion 字段直取 reply.final=AgentReply 原字段；实测截图显示 excited 徽标随回复渲染。"
         },
         {
           "criterion": "记忆 UI 原型：展示派蒙记得你上周说过...等 mock 记忆条目",
           "verify_by": "人工查看记忆 UI，确认 mock 数据展示",
-          "evidence": ""
+          "evidence": "mocks/memory.ts 按 MEMORY_SYSTEM_DESIGN §4 demo_memory.json 形状（facts/sessions/paimon_state）写派蒙语气条目；MemorySidebar 经 StateBar「记忆」按钮开合，Playwright 实测渲染 5 条目 + grudge/mood 徽标，标注 mock 徽标遵守边界。"
         }
       ],
       "done_when": [],
@@ -1192,25 +1192,65 @@
       ],
       "touches": [
         "frontend/src/components/",
-        "frontend/src/backend/"
+        "frontend/src/backend/",
+        "frontend/src/audio/",
+        "frontend/src/mocks/",
+        "frontend/src/App.tsx",
+        "frontend/src/styles/index.css",
+        "frontend/TODO.md"
       ],
-      "implements": ".loom/design/FRONTEND_DEMO_DESIGN.md §3.2 / §5",
+      "implements": ".loom/design/FRONTEND_DEMO_DESIGN.md",
       "design_exemption": "",
-      "capability_hooks": [],
+      "capability_hooks": [
+        {
+          "node": "low-latency-pipeline#C4",
+          "at": "麦克风上行帧粒度与浏览器播放缓冲设计时",
+          "must_produce": "小帧 streaming（上行 ≤100ms/帧）+ 播放 buffer 最小化，不攒大包"
+        }
+      ],
       "capability_exemption": "",
       "integrity_version": 1,
       "covers": [
         "DLV-012"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "npm run typecheck 通过（tsc --noEmit 0 errors）；npm run build 通过（vite build 454.65 kB）。",
+        "Playwright 冒烟（chromium + fake media device）：文本轮 → reply 气泡 + emotion badge(excited) + now-playing 波形条渲染；记忆侧栏开合正常（5 条 mock 条目）；麦克风按钮 → 真实 getUserMedia 采集 → 停止 → 语音轮次 asr.final 用户气泡 + 回复；console errors: none。",
+        "新增 frontend/src/audio/{pcm,MicCapture,ReplyPlayer}.ts：AudioWorklet(Blob URL 内联) 采集 → 线性重采样 → PCM 16kHz/16bit/mono、80ms 帧（≤100ms，low-latency-pipeline C4）→ user.audio.start/binary/user.audio.end；下行 audio.chunk 头 + 二进制帧按轮聚合 → WAV Blob → HTMLAudioElement 播放 + Waveform 手绘波形/播放头；interrupted 帧与 SPEAKING 中开麦均本地立即停播（barge-in）。",
+        "ChatBackend 接口加 sendAudioStart/sendAudioChunk/sendAudioEnd/onAudio；WsBackend 实现 §4.2 上行与 §4.3 下行（binaryType=arraybuffer，CONNECTING 排队）；MockBackend 发合成 pcm24k 音调音频帧使播放链路在无真实 TTS 下行时可演练。",
+        "已知缺口（非本任务范围，不改后端）：ws_gateway.py 目前 TTS 只走本地声卡/WavSinkPlayer，不向 WS 发 audio.chunk；前端播放链路契约就绪，真链路需后端补下行投影。已记 frontend/TODO.md。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "麦克风按钮接通真实音频采集，PCM 16kHz/16bit/mono 上行至后端",
+              "evidence": "frontend/src/audio/MicCapture.ts：getUserMedia→AudioContext→AudioWorklet→resampleToS16→1280-sample(80ms) Int16 帧；Composer 麦克风按钮 → toggleVoice → backend.sendAudioStart + sendAudioChunk(二进制) + sendAudioEnd。Playwright fake-device 实测：开窗/上行/关窗全链路无报错，语音轮次触发后端回复。"
+            },
+            {
+              "criterion": "TTS 音频播放：后端返回 audio.chunk 后前端可播放",
+              "evidence": "ReplyPlayer.push(meta.format→rate)+endTurn→pcmToWavBlob→HTMLAudioElement.play()；NowPlayingBar+Waveform 渲染波形与播放头。Playwright 实测 .now-playing 出现、无 console 错误。注：mock 后端发合成 pcm24k；真网关暂未下行 audio.chunk（后端缺口，TODO.md 已记）。"
+            },
+            {
+              "criterion": "情绪可视化：每条回复的情绪标签以手绘风 UI 表达",
+              "evidence": "EmotionBadge 单色图标+文字标签覆盖 §8 八标签集（neutral/happy/excited/teasing/annoyed/confused/smug/soft），emotion 字段直取 reply.final=AgentReply 原字段；实测截图显示 excited 徽标随回复渲染。"
+            },
+            {
+              "criterion": "记忆 UI 原型：展示派蒙记得你上周说过...等 mock 记忆条目",
+              "evidence": "mocks/memory.ts 按 MEMORY_SYSTEM_DESIGN §4 demo_memory.json 形状（facts/sessions/paimon_state）写派蒙语气条目；MemorySidebar 经 StateBar「记忆」按钮开合，Playwright 实测渲染 5 条目 + grudge/mood 徽标，标注 mock 徽标遵守边界。"
+            }
+          ],
+          "at": "2026-09-22T03:55:39.979Z"
+        }
+      ],
       "created_at": "2026-09-22T04:00:00.000Z",
-      "updated_at": "2026-09-22T04:00:00.000Z"
+      "updated_at": "2026-09-22T03:55:39.979Z",
+      "completed_at": "2026-09-22T03:55:39.979Z"
     }
   ]
 }
