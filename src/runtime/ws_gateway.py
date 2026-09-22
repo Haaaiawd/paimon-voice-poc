@@ -132,6 +132,50 @@ class _SpeechDeltaTap:
         return getattr(self._agent, name)
 
 
+# ---------------------------------------------------------------- audio.chunk 下行
+
+
+class _AudioTapPlayer:
+    """player 外观包装：write 先把 PCM 交给真实播放器，再原样广播给
+    audio sinks（→ audio.chunk 头 + 二进制帧）。播放/打断语义全归 delegate，
+    本层只做只读投影。"""
+
+    def __init__(
+        self,
+        delegate: Any,
+        sample_rate: int,
+        emit: Callable[[bytes, str], None],
+    ) -> None:
+        self._delegate = delegate
+        self._format = f"pcm{sample_rate / 1000:g}k"
+        self._emit = emit
+
+    def write(self, pcm: bytes) -> None:
+        self._delegate.write(pcm)
+        self._emit(bytes(pcm), self._format)
+
+    @property
+    def position_seconds(self) -> float:
+        return self._delegate.position_seconds
+
+    @property
+    def pending_seconds(self) -> float:
+        return self._delegate.pending_seconds
+
+    @property
+    def is_playing(self) -> bool:
+        return self._delegate.is_playing
+
+    def stop(self) -> float:
+        return self._delegate.stop()
+
+    def close(self) -> None:
+        self._delegate.close()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
+
+
 # ---------------------------------------------------------------- 事件 → 帧投影
 
 
@@ -211,7 +255,11 @@ class GatewayRuntime:
         self.audio_source = WsAudioSource()
         vad, turn, asr, llm, tts = _build_providers(args, env)
         self.llm = llm
-        self.player = _build_player(args, tts)
+        self._audio_sinks: set[Callable[[bytes, str], None]] = set()
+        local_player = _build_player(args, tts)
+        self.player = _AudioTapPlayer(
+            local_player, tts.sample_rate, self._emit_audio
+        )
         agent = CharacterAgent(llm)
         self._delta_sinks: set[Callable[[str], None]] = set()
         tapped = _SpeechDeltaTap(agent, self._emit_delta)
@@ -264,6 +312,16 @@ class GatewayRuntime:
         for sink in list(self._delta_sinks):
             sink(piece)
 
+    def add_audio_sink(self, sink: Callable[[bytes, str], None]) -> None:
+        self._audio_sinks.add(sink)
+
+    def remove_audio_sink(self, sink: Callable[[bytes, str], None]) -> None:
+        self._audio_sinks.discard(sink)
+
+    def _emit_audio(self, pcm: bytes, format: str) -> None:
+        for sink in list(self._audio_sinks):
+            sink(pcm, format)
+
 
 class ChatSession:
     """一条 /ws/chat 连接 = 一个会话（§4.1）。双向循环：
@@ -276,15 +334,17 @@ class ChatSession:
     def __init__(self, ws: WebSocket, rt: GatewayRuntime) -> None:
         self._ws = ws
         self._rt = rt
-        self._outbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self._outbox: asyncio.Queue[dict[str, Any] | bytes] = asyncio.Queue()
         self._subs: list = []
         self._capturing_audio = False
+        self._audio_seq = 0
 
     async def run(self) -> None:
         await self._ws.accept()
         for et in _PROJECTED_EVENTS:
             self._subs.append(self._rt.bus.subscribe(et, self._on_event))
         self._rt.add_delta_sink(self._on_delta)
+        self._rt.add_audio_sink(self._on_audio)
         sender = asyncio.create_task(self._send_loop(), name="ws-send")
         try:
             while True:
@@ -306,6 +366,7 @@ class ChatSession:
             for et, h in zip(_PROJECTED_EVENTS, self._subs):
                 self._rt.bus.unsubscribe(et, h)
             self._rt.remove_delta_sink(self._on_delta)
+            self._rt.remove_audio_sink(self._on_audio)
 
     # ---- bus → ws ----
 
@@ -316,10 +377,23 @@ class ChatSession:
     def _on_delta(self, piece: str) -> None:
         self._outbox.put_nowait({"type": "reply.delta", "text": piece})
 
+    def _on_audio(self, pcm: bytes, format: str) -> None:
+        """§4.3 audio.chunk：头帧紧跟二进制负载，seq 逐块递增。"""
+        self._audio_seq += 1
+        self._outbox.put_nowait(
+            {"type": "audio.chunk", "seq": self._audio_seq, "format": format}
+        )
+        self._outbox.put_nowait(pcm)
+
     async def _send_loop(self) -> None:
         while True:
             frame = await self._outbox.get()
-            await self._ws.send_text(json.dumps(frame, ensure_ascii=False))
+            if isinstance(frame, bytes):
+                await self._ws.send_bytes(frame)
+            else:
+                await self._ws.send_text(
+                    json.dumps(frame, ensure_ascii=False)
+                )
 
     # ---- ws → bus ----
 
@@ -443,7 +517,7 @@ def _build_providers(args, env):
         "OPENAI_COMPATIBLE_URL",
         "https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
-    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-turbo")
+    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-flash")
     ws_url = env.get("DASHSCOPE_WS_URL")
     vad = SileroVADAdapter()
     turn = SmartTurnAdapter(wait_for_transcript=True)
@@ -459,25 +533,28 @@ def _build_providers(args, env):
 
 
 def _build_player(args, tts):
-    """与 runtime.main._build_player 同策略：有声卡外放，无声卡落 wav。"""
-    try:
-        import sounddevice as sd
+    """gateway 默认浏览器-only 放音：PCM 经 audio.chunk 下行到前端，
+    本机只落 wav 审计（避免浏览器 + Python 扬声器双播）。
+    --local-playback 才走声卡外放（无声卡仍落 wav）。"""
+    if getattr(args, "local_playback", False):
+        try:
+            import sounddevice as sd
 
-        default_out = sd.default.device[1]
-        if default_out is None or int(default_out) < 0:
-            raise RuntimeError("no default output device")
-        from runtime.playback import StreamingPlayer
+            default_out = sd.default.device[1]
+            if default_out is None or int(default_out) < 0:
+                raise RuntimeError("no default output device")
+            from runtime.playback import StreamingPlayer
 
-        return StreamingPlayer(sample_rate=tts.sample_rate)
-    except Exception as e:
-        wav = args.playback_wav or ROOT / "data" / "playback_ws.wav"
-        print(
-            f"[playback] no output device ({e}) → WavSinkPlayer 落盘 {wav}",
-            file=sys.stderr,
-        )
-        return WavSinkPlayer(
-            sample_rate=tts.sample_rate, out_path=wav, realtime=True
-        )
+            return StreamingPlayer(sample_rate=tts.sample_rate)
+        except Exception as e:
+            print(
+                f"[playback] no output device ({e}) → WavSinkPlayer 落盘",
+                file=sys.stderr,
+            )
+    wav = args.playback_wav or ROOT / "data" / "playback_ws.wav"
+    return WavSinkPlayer(
+        sample_rate=tts.sample_rate, out_path=wav, realtime=True
+    )
 
 
 # ---------------------------------------------------------------- app / 入口
@@ -555,6 +632,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--outdir", type=Path, default=DEFAULT_OUTDIR)
     p.add_argument(
         "--playback-wav", type=Path, help="无声卡时 WavSinkPlayer 落盘路径"
+    )
+    p.add_argument(
+        "--local-playback",
+        action="store_true",
+        help="同时在后端机器声卡外放（默认关：浏览器已有 audio.chunk 下行，"
+        "避免双播）",
     )
     p.add_argument("--verbose", action="store_true")
     return p.parse_args()

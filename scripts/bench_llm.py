@@ -58,7 +58,7 @@ ENDPOINT_SPECS: tuple[dict[str, str], ...] = (
     {
         "name": "qwen",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "model": "qwen-turbo",
+        "model": "qwen-flash",
         "key_env": "DASHSCOPE_API_KEY",
         "model_env": "QWEN_MODEL",
     },

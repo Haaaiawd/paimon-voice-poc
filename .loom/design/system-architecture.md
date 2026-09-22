@@ -46,7 +46,7 @@ class TTSProvider:  async def stream_audio(...) / async def cancel(...)
 
 Capability 决策树给出的初始参数（实测后可调，调整走 `loom decision`）：
 - Silero VAD `stop_secs=0.2`（停顿事件早产生，判定交给模型）；Smart Turn
-  `SmartTurnParams.stop_secs=3.0`（incomplete 静音兜底）、`pre_speech_ms=500`、
+  `SmartTurnParams.stop_secs=1.2`（中文 incomplete 误判的实时优先兜底，D-2026-09-22-6thz）、`pre_speech_ms=500`、
   `max_duration_secs=8`（turn-taking C2/C3）；
 - Paraformer `semantic_punctuation_enabled=false`、`max_sentence_silence≈500ms`、
   `disfluency_removal_enabled=false`（streaming-asr-zh C1/C2/C4）；

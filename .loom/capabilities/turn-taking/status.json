@@ -1,11 +1,11 @@
 {
-  "status": "provisional",
+  "status": "confirmed",
   "title": "实时语音轮次检测与打断工程",
   "field": "实时语音轮次检测与打断工程",
-  "scenario": "中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声；已知模型中文 FNR 9.26% 需观测 fallback 率",
-  "confirmed_at": "",
+  "scenario": "中文实时自然对话：VAD 0.2s + Smart Turn 模型判停；模型误判 incomplete 时 1.2s 实时优先兜底，记录 fallback/抢话率并可回调 1.8s；用户可立即打断派蒙，派蒙暂不反向打断用户",
+  "confirmed_at": "2026-09-22T06:44:28.704Z",
   "created_at": "2026-09-21T13:25:53.202Z",
-  "updated_at": "2026-09-21T13:54:50.957Z",
-  "source": "agent",
-  "selected_at": "2026-09-21T13:54:50.957Z"
+  "updated_at": "2026-09-22T06:44:28.704Z",
+  "source": "human",
+  "selected_at": "2026-09-22T06:44:28.704Z"
 }

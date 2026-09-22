@@ -2,7 +2,7 @@
 
 不依赖麦克风：直接喂 PCM 走 strategy → analyzer → ONNX 的完整路径，
 覆盖 C1（TurnAnalyzerUserTurnStopStrategy + LocalSmartTurnAnalyzerV3 接线）
-与 C3（模型 incomplete 后 stop_secs=3.0 静音兜底 complete，且来源可区分）。
+与 C3（模型 incomplete 后 stop_secs=1.2 静音兜底 complete，且来源可区分）。
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ def test_smart_turn_wiring_and_params():
     assert isinstance(adapter.analyzer, LocalSmartTurnAnalyzerV3)
     assert isinstance(adapter.stop_strategy, TurnAnalyzerUserTurnStopStrategy)
     assert adapter.stop_strategy._turn_analyzer is adapter.analyzer
-    assert SMART_TURN_PARAMS.stop_secs == 3.0
+    assert SMART_TURN_PARAMS.stop_secs == 1.2
     assert SMART_TURN_PARAMS.pre_speech_ms == 500
     assert SMART_TURN_PARAMS.max_duration_secs == 8
     assert adapter.params is SMART_TURN_PARAMS
@@ -72,7 +72,7 @@ async def test_model_verdict_drives_turn_end():
 
 
 async def test_silence_fallback_completes_turn():
-    """C3：模型判 incomplete 后，3.0s 静音兜底判 complete，来源可区分。"""
+    """C3：模型判 incomplete 后，1.2s 静音兜底判 complete，来源可区分。"""
     adapter = SmartTurnAdapter()
     # 钉住模型输出，只测 strategy/analyzer 的兜底接线，不测模型本身。
     adapter.analyzer._predict_endpoint = lambda audio: {
@@ -91,8 +91,8 @@ async def test_silence_fallback_completes_turn():
     assert verdict.state == EndOfTurnState.INCOMPLETE
     assert not verdicts
 
-    # 模型判 incomplete → 继续喂静音帧，累计超过 stop_secs=3.0s 兜底
-    for _ in range(int(3.2 / 0.032)):
+    # 模型判 incomplete → 继续喂静音帧，累计超过 stop_secs=1.2s 兜底
+    for _ in range(int(1.4 / 0.032)):
         await adapter.append_audio(b"\x00" * FRAME)
         if verdicts:
             break

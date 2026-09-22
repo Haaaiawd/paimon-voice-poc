@@ -64,7 +64,17 @@ def _extract_json(text: str) -> str:
 
 
 def parse_agent_reply(text: str) -> AgentReply:
-    """把模型输出的 JSON 文本解析为 AgentReply，字段缺失/越界时给默认值。"""
+    """把模型输出解析为 AgentReply，兼容结构化对象与 JSON 字符串降级。"""
+    try:
+        direct = json.loads(text.strip())
+    except json.JSONDecodeError:
+        direct = None
+    if isinstance(direct, str):
+        return AgentReply(speech=direct)
+    if isinstance(direct, list):
+        speech = "".join(item for item in direct if isinstance(item, str))
+        return AgentReply(speech=speech)
+
     try:
         data = json.loads(_extract_json(text))
     except json.JSONDecodeError as e:

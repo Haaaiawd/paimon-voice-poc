@@ -225,15 +225,11 @@ function ChatProvider({ children }: { children: ReactNode }) {
 
     const handleFrame = (frame: ServerFrame) => {
       dispatch({ kind: 'frame', frame });
-      // Audio playback lifecycle (stage 3): buffered PCM flushes into an
-      // HTMLAudioElement at the turn boundary; barge-in drops everything.
+      // Audio playback lifecycle (stage 3): chunks are scheduled as they
+      // arrive; reply.final closes the turn, interrupted drops everything.
       if (frame.type === 'interrupted') {
         player.stopAll();
-      } else if (
-        (frame.type === 'latency' || frame.type === 'state') &&
-        (frame.type === 'latency' || frame.state !== 'SPEAKING') &&
-        player.buffered
-      ) {
+      } else if (frame.type === 'reply.final') {
         player.endTurn();
       }
     };
@@ -258,6 +254,8 @@ function ChatProvider({ children }: { children: ReactNode }) {
       state,
       send: (text) => {
         const id = uid();
+        // User gesture: unlock the AudioContext so reply audio can play.
+        void playerRef.current.unlock();
         dispatch({ kind: 'user.sent', text, id });
         backendRef.current?.sendText(text, id);
       },
@@ -273,6 +271,8 @@ function ChatProvider({ children }: { children: ReactNode }) {
           setMicLevel(0);
           return;
         }
+        // Mic toggle is a user gesture: unlock the AudioContext first.
+        void playerRef.current.unlock();
         backend.sendAudioStart();
         // Local half of barge-in: user starts talking → Paimon hushes now,
         // without waiting for the server's interrupted frame.

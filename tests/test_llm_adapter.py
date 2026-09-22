@@ -114,7 +114,10 @@ def test_parse_agent_reply_tolerates_fence_and_defaults():
     clamped = parse_agent_reply('{"speech": "x", "energy": 9}')
     assert clamped.energy == 1.0
 
+    string_fallback = parse_agent_reply('"嘿，还在发呆吗？"')
+    assert string_fallback == AgentReply(speech="嘿，还在发呆吗？")
+    assert parse_agent_reply('["嘿", "！"]').speech == "嘿！"
+    assert parse_agent_reply("[30]").speech == ""
+
     with pytest.raises(StructuredOutputError):
         parse_agent_reply("完全不是 JSON")
-    with pytest.raises(StructuredOutputError):
-        parse_agent_reply('["不是", "对象"]')

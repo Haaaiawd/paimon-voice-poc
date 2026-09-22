@@ -163,7 +163,7 @@ def _build_real(args, env):
         "OPENAI_COMPATIBLE_URL",
         "https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
-    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-turbo")
+    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-flash")
     if missing:
         raise SystemExit(
             "缺少 API key：" + "；".join(missing) + "。填 .env 或用 --mock 演示。"

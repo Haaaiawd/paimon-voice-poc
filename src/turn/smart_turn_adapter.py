@@ -1,7 +1,7 @@
 """Smart Turn adapter：LocalSmartTurnAnalyzerV3 + TurnAnalyzerUserTurnStopStrategy。
 
 turn-taking C1：轮次结束权在模型，不裸用 VAD 静音超时；
-turn-taking C3：模型判 incomplete 后由 SmartTurnParams.stop_secs=3.0 静音
+turn-taking C3：模型判 incomplete 后由 SmartTurnParams.stop_secs=1.2 静音
 兜底 complete，且每次 complete 要可区分来源（model vs silence_fallback），
 供后续 metrics 观察中文模型 fallback 率（已知中文 FNR≈9.26%）。
 
@@ -40,7 +40,7 @@ from pipecat.utils.asyncio.task_manager import TaskManager
 
 # 显式配置（turn-taking C2/C3 验收点）。
 SMART_TURN_PARAMS = SmartTurnParams(
-    stop_secs=3.0,  # 模型判 incomplete 后的静音兜底秒数
+    stop_secs=1.2,  # 中文误判时优先实时响应；真实聊天继续观察抢话率
     pre_speech_ms=500,
     max_duration_secs=8,
 )

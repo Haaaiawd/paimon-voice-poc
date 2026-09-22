@@ -1,6 +1,6 @@
 /**
  * Mock voice — stage 3. Synthesizes a bright warbling tone shaped by the
- * reply text so the playback path (audio.chunk → WAV → HTMLAudioElement →
+ * reply text so the playback path (audio.chunk → AudioBufferSourceNode →
  * waveform) is exercisable without the real TTS. Mirrors the backend's
  * ToneTTS(sample_rate=24000, secs_per_chunk=0.15) demo shape.
  */

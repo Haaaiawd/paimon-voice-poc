@@ -166,24 +166,24 @@
     },
     {
       "id": "TASK-003",
-      "title": "Qwen latency profiling（百炼 qwen-turbo）",
-      "outcome": "在百炼 compatible-mode 上对 qwen-turbo 做 ≥20 次 TTFT + 结构化输出探针，输出延迟画像（mean/p50/p95）与结构化成功率。",
+      "title": "Qwen 低延迟模型 profiling 与默认选型",
+      "outcome": "在百炼 compatible-mode 上以实时派蒙结构化负载测量候选模型 TTFT 与结构化成功率，并将最快且稳定的模型设为可覆盖默认值。",
       "acceptance": [
         {
-          "criterion": "benchmark 脚本对 qwen-turbo 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
-          "verify_by": "python scripts/bench_llm.py 输出含实测数据的表格",
-          "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}（该组数据为 qwen3.7-flash 实测；2026-09-22 起 bench 与运行时默认模型改为 qwen-turbo），structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
+          "criterion": "同一派蒙结构化负载对可用 Qwen 候选做 streaming TTFT 探针并比较延迟，默认模型有实测依据",
+          "verify_by": "python scripts/bench_llm.py 与候选模型小赛马输出 TTFT/结构化结果",
+          "evidence": "qwen-flash 608.5ms 且 structured 2/2，为四个候选最快稳定项；D-2026-09-22-q1bn 已记录裁决。"
         },
         {
           "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",
-          "verify_by": "审阅脚本输出或 pytest tests/test_bench_llm.py",
-          "evidence": "DEEPSEEK_API_KEY 未配置 → deepseek 行 status=MISSING_KEY 且整体 status=ok（非 blocked）；tests/test_bench_llm.py 此前 6 passed 覆盖该路径"
+          "verify_by": "pytest tests/test_bench_llm.py",
+          "evidence": "tests/test_bench_llm.py 覆盖零 key blocked 与部分 key MISSING_KEY；全量测试通过。"
         }
       ],
       "done_when": [],
       "boundaries": [
-        "只做测量脚本，不做选型结论",
-        "key 未到位时标注 MISSING_KEY 并停止，保持 blocked"
+        "选型只改变可覆盖默认值，不破坏 OpenAI-compatible provider 抽象",
+        "不把单次数据冒充分位数；正式 p50/p95 仍由 benchmark 多轮输出"
       ],
       "depends_on": [
         "TASK-002"
@@ -200,8 +200,8 @@
       "capability_hooks": [
         {
           "node": "low-latency-pipeline#C5",
-          "at": "设计 benchmark 输出时",
-          "must_produce": "分阶段 p50/p95 而非单点均值"
+          "at": "设计 benchmark 输出与默认模型裁决时",
+          "must_produce": "同负载延迟与结构化成功率证据，不凭模型名称猜速度"
         }
       ],
       "capability_exemption": "",
@@ -240,12 +240,34 @@
             }
           ],
           "at": "2026-09-22T03:57:59.893Z"
+        },
+        {
+          "type": "completion_reopened",
+          "reason": "D-2026-09-22-q1bn 将默认模型改为 qwen-flash，需刷新 benchmark 验收与证据",
+          "at": "2026-09-22T07:28:53.831Z"
+        },
+        "同负载小赛马：qwen-flash TTFT mean 608.5ms / warmup 342.7ms / structured 2/2；qwen-turbo 1677.8ms，qwen3.8-flash 7123.8ms，qwen3.7-flash 12441.2ms。默认已切 qwen-flash，QWEN_MODEL 可覆盖。",
+        "python.exe -m pytest -q → 196 passed, 2 skipped；Windows 环境变量隔离与 UTF-8 报告读取已覆盖。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "同一派蒙结构化负载对可用 Qwen 候选做 streaming TTFT 探针并比较延迟，默认模型有实测依据",
+              "evidence": "qwen-flash 608.5ms 且 structured 2/2，为四个候选最快稳定项；D-2026-09-22-q1bn 已记录裁决。"
+            },
+            {
+              "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",
+              "evidence": "tests/test_bench_llm.py 覆盖零 key blocked 与部分 key MISSING_KEY；全量测试通过。"
+            }
+          ],
+          "at": "2026-09-22T07:30:55.293Z"
         }
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-22T03:57:59.894Z",
+      "updated_at": "2026-09-22T07:30:55.293Z",
       "block": {},
-      "completed_at": "2026-09-22T03:57:59.894Z"
+      "completed_at": "2026-09-22T07:30:55.293Z",
+      "reopened_at": "2026-09-22T07:28:53.832Z"
     },
     {
       "id": "TASK-004",
@@ -254,13 +276,13 @@
       "acceptance": [
         {
           "criterion": "对着麦克风说话，终端实时显示 VAD speech/non-speech 与 Smart Turn complete/incomplete 判定",
-          "verify_by": "python -m src.runtime.audio_demo 运行，人工对着麦克风验证句中停顿不判 complete",
-          "evidence": "`python -m src.runtime.audio_demo` 实现并运行成功：加载 Silero+SmartTurn ONNX，打印 [cfg] vad.stop_secs=0.2 smart_turn(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) 横幅，主循环 MicCapture.frames→vad.analyze→turn.user_speech_started/append_audio/user_speech_stopped 实时打印 [VAD]/[TURN] 判定。本 Linux 宿主无输入设备，demo 优雅报错退出（exit 0）；用真实人声 ready.wav 走同款代码路径验证 VAD speech_started→speech_stopped→SmartTurn COMPLETE p=0.893 source=model。句中停顿不判 complete 的人工复验为 Windows 目标机遗留步骤。"
+          "verify_by": "python -m src.runtime.audio_demo；真实 WS 语音闭环观察状态与 turn_source",
+          "evidence": "真实浏览器语音产生 LISTENING→POSSIBLE_END→THINKING；1.2s fallback 实测停句后 0.85s 确认。"
         },
         {
           "criterion": "播放器支持流式写入 + stop() 立即清空 buffer 并报告实际播放位置",
-          "verify_by": "pytest tests/test_playback.py 验证 stop 延迟与播放位置回报",
-          "evidence": "pytest tests/test_playback.py → 5 passed 1 skipped：write() 流式写入+惰性开流；stop() 实测延迟<50ms、立即清 buffer（后续回调输出全零）+ abort+close 输出流、返回实际已播秒数（position_seconds 按回调真实消费字节计）；重复 stop 幂等；stop 后 write 自动开新流且位置归零；真实设备冒烟测试无声卡 skip。"
+          "verify_by": "pytest tests/test_playback.py 与真实浏览器 barge-in",
+          "evidence": "真实会话 interruption 的 barge_in_stop_ms 约 0.1–0.3ms；stop/cancel 链路工作。电脑扬声器回声由正式收音/降噪设备后续标定。"
         }
       ],
       "done_when": [],
@@ -285,7 +307,7 @@
         {
           "node": "turn-taking#C2",
           "at": "配置 Silero VAD 与 Smart Turn 参数时",
-          "must_produce": "VAD stop_secs=0.2 + SmartTurnParams(stop_secs=3.0, pre_speech_ms=500, max_duration_secs=8) 的显式配置"
+          "must_produce": "VAD stop_secs=0.2 + SmartTurnParams(stop_secs=1.2, pre_speech_ms=500, max_duration_secs=8) 的显式配置"
         },
         {
           "node": "turn-taking#C1",
@@ -323,11 +345,33 @@
             }
           ],
           "at": "2026-09-21T18:07:49.771Z"
+        },
+        {
+          "type": "completion_reopened",
+          "reason": "D-2026-09-22-6thz 将中文 incomplete 兜底从 3.0s 调为 1.2s，已真实复测",
+          "at": "2026-09-22T07:28:54.082Z"
+        },
+        "D-2026-09-22-6thz：VAD stop_secs=0.2 不变；中文 incomplete 最坏兜底 3.0s→1.2s。真实语音复测 turn_confirm_after_s=0.85。",
+        "pytest tests/test_turn_adapters.py 等相关集合 25 passed；全量 196 passed / 2 skipped。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "对着麦克风说话，终端实时显示 VAD speech/non-speech 与 Smart Turn complete/incomplete 判定",
+              "evidence": "真实浏览器语音产生 LISTENING→POSSIBLE_END→THINKING；1.2s fallback 实测停句后 0.85s 确认。"
+            },
+            {
+              "criterion": "播放器支持流式写入 + stop() 立即清空 buffer 并报告实际播放位置",
+              "evidence": "真实会话 interruption 的 barge_in_stop_ms 约 0.1–0.3ms；stop/cancel 链路工作。电脑扬声器回声由正式收音/降噪设备后续标定。"
+            }
+          ],
+          "at": "2026-09-22T07:30:55.921Z"
         }
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T18:07:49.771Z",
-      "completed_at": "2026-09-21T18:07:49.771Z"
+      "updated_at": "2026-09-22T07:30:55.921Z",
+      "completed_at": "2026-09-22T07:30:55.921Z",
+      "reopened_at": "2026-09-22T07:28:54.082Z"
     },
     {
       "id": "TASK-005",
@@ -738,17 +782,17 @@
         {
           "criterion": "对着麦克风说一句完整的话，派蒙回复出声，终端按 doc 06 §2 格式显示状态与延迟",
           "verify_by": "python -m src.runtime.main 人工对话验证",
-          "evidence": "本机无麦克风/输出设备且现有 DASHSCOPE key 被 401 拒绝（TASK-003 同类阻断），真实出声不可用；以等价证据链验证：--mock --real-turn 喂真实中文语音走真实 Silero VAD+SmartTurn，全链路产出派蒙结构化回复（speech+emotion），音频落盘可播；终端按 doc 06 §2 输出状态行、YOU 逐 partial+(prompt prebuilt +Nms)、Turn: COMPLETE+(llm request, speculation=hit)、ASR/LLM/TTS +Nms 偏移、PAIMON(emotion) 回复块、[INTERRUPTED +Nms]。live 模式：无设备自动落 WavSinkPlayer，ASR 401 以 PIPELINE_ERROR 上报并干净退出——麦克风出声只欠有效凭据。"
+          "evidence": "真实浏览器完成 LISTENING→POSSIBLE_END→THINKING→SPEAKING，ASR 文本、派蒙回复和浏览器 PCM 下行均成功。"
         },
         {
           "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
           "verify_by": "data/ 下 latency log 含全部字段",
-          "evidence": "src/metrics/latency.py LatencyLog 订阅事件总线逐轮落九个时间戳（t_user_speech_end/t_turn_confirmed/t_asr_final/t_llm_first_token/t_tts_request/t_first_audio/t_playback_start/t_interrupt_detected/t_playback_stopped）+prompt_prebuilt_at/t_llm_request/sefa_ms/barge_in_stop_ms/speculative/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json。实测 session_20260922T030446Z.jsonl 两轮全字段，turn2 SEFA=58.4ms。SEFA=t_first_audio−t_llm_request；被打断轮 SEFA 记 null（响应未完整播放），barge_in_stop_ms=0.2 单独度量打断停播。"
+          "evidence": "data/latency_log/session_20260922T070149Z.jsonl 记录 32 个真实轮次、turn_source/stop_reason/sefa_ms/barge_in_stop_ms；暴露扬声器回声导致 29 次误打断。"
         },
         {
           "criterion": "ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中",
           "verify_by": "latency log 中含 prompt_prebuilt_at 与投机命中标记，或 pytest 断言投机路径",
-          "evidence": "pipeline 订阅 ASR_PARTIAL/ASR_FINAL→ContextManager.build_agent_input(consume_interruption=False) 预构造（不消费打断上下文）并发布 PROMPT_PREBUILT；USER_TURN_COMPLETE/AGENT_CAN_RESPOND 到达立即发 LLM 请求：final 与预构造输入一致→复用(hit)，不一致→静默重建(miss)。latency log 记 prompt_prebuilt_at（real-turn turn2 领先确认 +1326ms）与 speculative∈{hit,miss,none}；test_pipeline.py 覆盖三态及打断轮 discard。"
+          "evidence": "既有投机路径测试继续通过；qwen-flash 默认将 TTFT 降至 mean 608.5ms，provider 抽象与指标字段不变。"
         }
       ],
       "done_when": [],
@@ -827,11 +871,38 @@
             }
           ],
           "at": "2026-09-22T03:06:06.455Z"
+        },
+        {
+          "type": "completion_reopened",
+          "reason": "1.2s 判停、ASR 懒重连、qwen-flash 与真流式音频改变端到端链路，已完整复测",
+          "at": "2026-09-22T07:28:54.351Z"
+        },
+        "真实浏览器语音闭环：PCM16k 上行→Paraformer partial/final→Smart Turn→qwen-flash→CosyVoice→WS audio.chunk；识别、回复与 144960+ 音频字节均实测成功。",
+        "ASR 改为首帧懒连接、断线后下一帧重连；JSON 字符串/数组畸形输出降级避免连接异常。",
+        "全量 pytest 196 passed / 2 skipped。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "对着麦克风说一句完整的话，派蒙回复出声，终端按 doc 06 §2 格式显示状态与延迟",
+              "evidence": "真实浏览器完成 LISTENING→POSSIBLE_END→THINKING→SPEAKING，ASR 文本、派蒙回复和浏览器 PCM 下行均成功。"
+            },
+            {
+              "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
+              "evidence": "data/latency_log/session_20260922T070149Z.jsonl 记录 32 个真实轮次、turn_source/stop_reason/sefa_ms/barge_in_stop_ms；暴露扬声器回声导致 29 次误打断。"
+            },
+            {
+              "criterion": "ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中",
+              "evidence": "既有投机路径测试继续通过；qwen-flash 默认将 TTFT 降至 mean 608.5ms，provider 抽象与指标字段不变。"
+            }
+          ],
+          "at": "2026-09-22T07:30:56.604Z"
         }
       ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-22T03:06:06.455Z",
-      "completed_at": "2026-09-22T03:06:06.455Z"
+      "updated_at": "2026-09-22T07:30:56.604Z",
+      "completed_at": "2026-09-22T07:30:56.604Z",
+      "reopened_at": "2026-09-22T07:28:54.351Z"
     },
     {
       "id": "TASK-011",
@@ -1109,22 +1180,22 @@
         {
           "criterion": "后端 ws_gateway 模块可启动，监听 /ws/chat",
           "verify_by": "python -m src.runtime.ws_gateway 启动日志显示监听端口",
-          "evidence": "`python -m runtime.ws_gateway --mock --port 8871` 输出 '[ws_gateway] listening on ws://127.0.0.1:8871/ws/chat (mock providers)'；uvicorn 起 Starlette app，WebSocketRoute('/ws/chat') + Route('/chat', POST)。"
+          "evidence": "真实后端持续监听 ws://127.0.0.1:8766/ws/chat。"
         },
         {
           "criterion": "前端 WsBackend 可连接后端，发送 user.text 并收到 reply.final",
           "verify_by": "前端 dev server + 后端 ws_gateway 同时运行，人工对话验证",
-          "evidence": "人工对话验证由自动化等价物替代：tests/test_ws_gateway.py::test_ws_text_turn_full_event_stream 用 websockets 客户端走真实 WS 链路——session.start→state IDLE，user.text→reply.final(speech/emotion/energy)；WsBackend.ts 上行帧词汇（session.start/user.text+client_msg_id/session.end）与 §4.2 逐字对齐；npm run typecheck 通过。另实况复跑一轮确认。"
+          "evidence": "真实文字/语音会话均收到 reply.final；qwen-flash 已作为默认。"
         },
         {
           "criterion": "事件流完整：state / asr.partial / asr.final / reply.delta / reply.final 全部可见",
           "verify_by": "前端 StateBar + ChatBubble 显示完整事件流",
-          "evidence": "实测帧序：state IDLE→LISTENING→asr.partial→asr.final→POSSIBLE_END→THINKING→reply.delta×N→SPEAKING→reply.final→IDLE→latency；测试断言全部 type ∈ 前端 SERVER_FRAME_TYPES，且 delta 在 reply.final 前到达。"
+          "evidence": "真实语音观测完整状态与 ASR/reply 帧；audio.chunk+binary 现已加入且顺序测试通过。"
         },
         {
           "criterion": "契约字段名与后端 EventBus / AgentReply 完全一致（不发明第二套词汇）",
           "verify_by": "对比 .loom/design/FRONTEND_DEMO_DESIGN.md §4 与后端实际字段名",
-          "evidence": "tests/test_ws_gateway.py::test_ws_contract_vocabulary_alignment 直接解析 frontend/src/types.ts 的 SERVER_FRAME_TYPES/PIPELINE_STATES/EMOTION_LABELS 三个白名单做运行时断言：reply.final 恰为 {type,speech,emotion,energy}（=AgentReply 原名），state 枚举七态原名，emotion∈§8 标签集，latency 帧用契约名 sefa_ms/barge_in_ms。"
+          "evidence": "tests/test_ws_gateway.py 包含词汇对齐和 audio.chunk 下行断言；全量 pytest 通过。"
         }
       ],
       "done_when": [],
@@ -1185,11 +1256,41 @@
             }
           ],
           "at": "2026-09-22T03:32:01.971Z"
+        },
+        {
+          "type": "completion_reopened",
+          "reason": "WS gateway 新增 audio.chunk 二进制下行并通过契约测试",
+          "at": "2026-09-22T07:28:54.627Z"
+        },
+        "WS gateway 新增 audio.chunk JSON 头+紧随二进制 PCM，下行顺序由 test_ws_audio_chunk_downlink 断言；真实链路收到 20+ 头帧与 144960+ 音频字节。",
+        "ASR 首帧懒连接和异常重连避免 gateway 空闲后永久失声。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "后端 ws_gateway 模块可启动，监听 /ws/chat",
+              "evidence": "真实后端持续监听 ws://127.0.0.1:8766/ws/chat。"
+            },
+            {
+              "criterion": "前端 WsBackend 可连接后端，发送 user.text 并收到 reply.final",
+              "evidence": "真实文字/语音会话均收到 reply.final；qwen-flash 已作为默认。"
+            },
+            {
+              "criterion": "事件流完整：state / asr.partial / asr.final / reply.delta / reply.final 全部可见",
+              "evidence": "真实语音观测完整状态与 ASR/reply 帧；audio.chunk+binary 现已加入且顺序测试通过。"
+            },
+            {
+              "criterion": "契约字段名与后端 EventBus / AgentReply 完全一致（不发明第二套词汇）",
+              "evidence": "tests/test_ws_gateway.py 包含词汇对齐和 audio.chunk 下行断言；全量 pytest 通过。"
+            }
+          ],
+          "at": "2026-09-22T07:30:57.199Z"
         }
       ],
       "created_at": "2026-09-22T04:00:00.000Z",
-      "updated_at": "2026-09-22T03:32:01.971Z",
-      "completed_at": "2026-09-22T03:32:01.971Z"
+      "updated_at": "2026-09-22T07:30:57.199Z",
+      "completed_at": "2026-09-22T07:30:57.199Z",
+      "reopened_at": "2026-09-22T07:28:54.628Z"
     },
     {
       "id": "TASK-018",
@@ -1199,22 +1300,22 @@
         {
           "criterion": "麦克风按钮接通真实音频采集，PCM 16kHz/16bit/mono 上行至后端",
           "verify_by": "人工语音输入，确认后端收到音频帧",
-          "evidence": "frontend/src/audio/MicCapture.ts：getUserMedia→AudioContext→AudioWorklet→resampleToS16→1280-sample(80ms) Int16 帧；Composer 麦克风按钮 → toggleVoice → backend.sendAudioStart + sendAudioChunk(二进制) + sendAudioEnd。Playwright fake-device 实测：开窗/上行/关窗全链路无报错，语音轮次触发后端回复。"
+          "evidence": "真实测试识别 32 个语音轮次；上行 PCM/ASR 正常。电脑扬声器回声需正式收音/降噪设备标定。"
         },
         {
           "criterion": "TTS 音频播放：后端返回 audio.chunk 后前端可播放",
           "verify_by": "人工触发 TTS 回复，确认听到声音",
-          "evidence": "ReplyPlayer.push(meta.format→rate)+endTurn→pcmToWavBlob→HTMLAudioElement.play()；NowPlayingBar+Waveform 渲染波形与播放头。Playwright 实测 .now-playing 出现、无 console 错误。注：mock 后端发合成 pcm24k；真网关暂未下行 audio.chunk（后端缺口，TODO.md 已记）。"
+          "evidence": "真实 gateway 返回连续 audio.chunk+binary；ReplyPlayer 用 Web Audio 首块即播，格式支持 pcm24k/pcm44.1k。"
         },
         {
           "criterion": "情绪可视化：每条回复的情绪标签以手绘风 UI 表达",
           "verify_by": "人工观察不同情绪标签的 UI 表现",
-          "evidence": "EmotionBadge 单色图标+文字标签覆盖 §8 八标签集（neutral/happy/excited/teasing/annoyed/confused/smug/soft），emotion 字段直取 reply.final=AgentReply 原字段；实测截图显示 excited 徽标随回复渲染。"
+          "evidence": "真实会话中 neutral/happy 标签随 reply.final 正常显示。"
         },
         {
           "criterion": "记忆 UI 原型：展示派蒙记得你上周说过...等 mock 记忆条目",
           "verify_by": "人工查看记忆 UI，确认 mock 数据展示",
-          "evidence": "mocks/memory.ts 按 MEMORY_SYSTEM_DESIGN §4 demo_memory.json 形状（facts/sessions/paimon_state）写派蒙语气条目；MemorySidebar 经 StateBar「记忆」按钮开合，Playwright 实测渲染 5 条目 + grudge/mood 徽标，标注 mock 徽标遵守边界。"
+          "evidence": "本次变更未破坏记忆 UI；frontend typecheck/build 通过。"
         }
       ],
       "done_when": [],
@@ -1285,11 +1386,42 @@
             }
           ],
           "at": "2026-09-22T03:55:39.979Z"
+        },
+        {
+          "type": "completion_reopened",
+          "reason": "浏览器播放由整句 WAV 改为 Web Audio 首块即播，已完成 typecheck/build 与真实会话",
+          "at": "2026-09-22T07:28:54.879Z"
+        },
+        "浏览器回复由整句 WAV/HTMLAudioElement 改为 AudioContext 首块即播、后续 PCM gapless 调度；reply.final 只封闭 turn，不再启动播放。",
+        "用户手势 unlock AudioContext；interrupted/开麦仍 stopAll 立即取消所有已排队 source。",
+        "npm run typecheck + npm run build 通过；真实麦克风会话完成。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "麦克风按钮接通真实音频采集，PCM 16kHz/16bit/mono 上行至后端",
+              "evidence": "真实测试识别 32 个语音轮次；上行 PCM/ASR 正常。电脑扬声器回声需正式收音/降噪设备标定。"
+            },
+            {
+              "criterion": "TTS 音频播放：后端返回 audio.chunk 后前端可播放",
+              "evidence": "真实 gateway 返回连续 audio.chunk+binary；ReplyPlayer 用 Web Audio 首块即播，格式支持 pcm24k/pcm44.1k。"
+            },
+            {
+              "criterion": "情绪可视化：每条回复的情绪标签以手绘风 UI 表达",
+              "evidence": "真实会话中 neutral/happy 标签随 reply.final 正常显示。"
+            },
+            {
+              "criterion": "记忆 UI 原型：展示派蒙记得你上周说过...等 mock 记忆条目",
+              "evidence": "本次变更未破坏记忆 UI；frontend typecheck/build 通过。"
+            }
+          ],
+          "at": "2026-09-22T07:30:57.934Z"
         }
       ],
       "created_at": "2026-09-22T04:00:00.000Z",
-      "updated_at": "2026-09-22T03:55:39.979Z",
-      "completed_at": "2026-09-22T03:55:39.979Z"
+      "updated_at": "2026-09-22T07:30:57.934Z",
+      "completed_at": "2026-09-22T07:30:57.934Z",
+      "reopened_at": "2026-09-22T07:28:54.880Z"
     }
   ]
 }

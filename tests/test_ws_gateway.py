@@ -107,6 +107,8 @@ async def _collect(ws, until, *, timeout: float = 20.0) -> list[dict]:
         remaining = deadline - asyncio.get_running_loop().time()
         assert remaining > 0, f"timed out; got: {[f.get('type') for f in frames]}"
         raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+        if isinstance(raw, bytes):
+            continue  # audio.chunk 二进制负载帧不是 JSON
         frames.append(json.loads(raw))
     return frames
 
@@ -233,6 +235,52 @@ async def test_ws_contract_vocabulary_alignment(tmp_path):
     ws_src = WS_BACKEND_TS.read_text(encoding="utf-8")
     for literal in ("session.start", "user.text", "client_msg_id", "session.end"):
         assert literal in ws_src, f"WsBackend missing client frame {literal}"
+
+
+async def test_ws_audio_chunk_downlink(tmp_path):
+    """§4.3 audio.chunk：文本轮次走到 SPEAKING 时，TTS PCM 以
+    "JSON 头帧 + 紧随其后的二进制负载帧"投下下行。"""
+    raw_messages: list = []
+    async with _GatewayServer(tmp_path) as gw:
+        async with websockets.connect(gw.ws_url) as ws:
+            await ws.send(json.dumps({"type": "session.start"}))
+            await ws.recv()  # state IDLE
+
+            await ws.send(
+                json.dumps({"type": "user.text", "text": USER_TEXT})
+            )
+            deadline = asyncio.get_running_loop().time() + 20.0
+            while True:
+                remaining = deadline - asyncio.get_running_loop().time()
+                assert remaining > 0, "timed out waiting for reply.final"
+                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+                raw_messages.append(raw)
+                if isinstance(raw, str) and '"reply.final"' in raw:
+                    if json.loads(raw)["type"] == "reply.final":
+                        break
+
+    # 至少一对 audio.chunk 头 + 二进制负载
+    headers = [
+        i
+        for i, m in enumerate(raw_messages)
+        if isinstance(m, str)
+        and '"audio.chunk"' in m
+        and json.loads(m).get("type") == "audio.chunk"
+    ]
+    assert headers, "no audio.chunk header frames received"
+
+    final_idx = next(
+        i
+        for i, m in enumerate(raw_messages)
+        if isinstance(m, str) and json.loads(m)["type"] == "reply.final"
+    )
+    for i in headers:
+        header = json.loads(raw_messages[i])
+        assert header["format"] == "pcm24k"  # mock ToneTTS sample_rate
+        assert isinstance(header["seq"], int) and header["seq"] >= 1
+        payload = raw_messages[i + 1]  # 头帧必须紧跟二进制负载
+        assert isinstance(payload, bytes) and len(payload) > 0
+        assert i + 1 < final_idx, "audio chunk arrived after reply.final"
 
 
 async def test_http_chat_smoke_bypass(tmp_path):

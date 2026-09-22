@@ -125,7 +125,7 @@ class ScriptedTurn:
         source: str = "model",
     ) -> None:
         self.params = SimpleNamespace(
-            stop_secs=3.0, pre_speech_ms=0, max_duration_secs=8
+            stop_secs=1.2, pre_speech_ms=0, max_duration_secs=8
         )
         self.on_turn_complete: Callable[[Any], None] | None = None
         self._delay = complete_delay_s

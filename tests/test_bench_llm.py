@@ -119,28 +119,38 @@ async def test_bench_endpoint_counts_parse_failures():
     assert result["ttft_ms"]["n"] == 4
 
 
-def test_main_zero_keys_blocked(tmp_path):
+def test_main_zero_keys_blocked(tmp_path, monkeypatch):
+    for key in ("DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
     env_file = tmp_path / ".env"
-    env_file.write_text("DASHSCOPE_API_KEY=\nDEEPSEEK_API_KEY=\n")
+    env_file.write_text(
+        "DASHSCOPE_API_KEY=\nDEEPSEEK_API_KEY=\n", encoding="utf-8"
+    )
     rc = bench_llm.main(
         ["--env-file", str(env_file), "--outdir", str(tmp_path / "bench")]
     )
     assert rc == 2
 
-    report = json.loads((tmp_path / "bench" / "latest.json").read_text())
+    report = json.loads(
+        (tmp_path / "bench" / "latest.json").read_text(encoding="utf-8")
+    )
     assert report["status"] == "blocked"
     assert all(e["status"] == "MISSING_KEY" for e in report["endpoints"])
     assert (tmp_path / "bench" / "latest.md").exists()
 
 
 def test_main_partial_keys_runs_and_skips(tmp_path, monkeypatch):
+    for key in ("DASHSCOPE_API_KEY", "DEEPSEEK_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(
         bench_llm,
         "make_llm",
         lambda ep, *, timeout, trust_env: mock_llm(ep),
     )
     env_file = tmp_path / ".env"
-    env_file.write_text("DEEPSEEK_API_KEY=sk-x\nDASHSCOPE_API_KEY=\n")
+    env_file.write_text(
+        "DEEPSEEK_API_KEY=sk-x\nDASHSCOPE_API_KEY=\n", encoding="utf-8"
+    )
     rc = bench_llm.main(
         [
             "--env-file",
@@ -155,7 +165,9 @@ def test_main_partial_keys_runs_and_skips(tmp_path, monkeypatch):
     )
     assert rc == 0
 
-    report = json.loads((tmp_path / "bench" / "latest.json").read_text())
+    report = json.loads(
+        (tmp_path / "bench" / "latest.json").read_text(encoding="utf-8")
+    )
     assert report["status"] == "ok"
     by_name = {e["name"]: e for e in report["endpoints"]}
     assert by_name["qwen"]["status"] == "MISSING_KEY"

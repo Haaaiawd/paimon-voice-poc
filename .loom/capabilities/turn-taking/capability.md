@@ -16,7 +16,7 @@
 
 ## Project scenario
 
-中文口语 Companion，句中停顿多，可随时插嘴，本地 CPU 跑 Silero+SmartTurn，耳机无回声；已知模型中文 FNR 9.26% 需观测 fallback 率
+中文实时自然对话：VAD 0.2s + Smart Turn 模型判停；模型误判 incomplete 时 1.2s 实时优先兜底，记录 fallback/抢话率并可回调 1.8s；用户可立即打断派蒙，派蒙暂不反向打断用户
 
 ## Decision tree
 
@@ -56,13 +56,13 @@
 - entry_when: Smart Turn 判 incomplete 但用户迟迟不续说
 - options:
   - A: 无限等待 → leads_to: 死等，违反延迟预算
-  - B: SmartTurnParams.stop_secs（默认 3.0s）静音超时兜底 complete → leads_to: C4
-- decide_by: 防止思考停顿/拖长尾音导致死锁；3s 是默认值，真实对话后按"抢话率 vs 死等率"调。
-  注意 Smart Turn 中文准确率 85.79%/FNR 9.26%（23 语言倒数第三）——约 9% 轮次会落到兜底，
-  metrics 必须记录每次 complete 的来源（model vs fallback）以区分模型短板与接线错误
+  - B: SmartTurnParams.stop_secs=1.2s 静音超时兜底 complete → leads_to: C4
+- decide_by: 防止思考停顿/拖长尾音导致死锁；Smart Turn 中文准确率 85.79%/FNR 9.26%
+  （23 语言倒数第三），实测完整中文句会误判 incomplete。用户明确选择实时优先，将默认 3.0s
+  收紧为 1.2s；metrics 继续记录 model vs fallback 来源，按真实抢话率决定是否回调到 1.8s。
 - source: pipecat-smart-turn-mechanics.md, smart-turn-zh-benchmark.md
 - counterexample: 用户场景含长思考（读卡号、查信息）时主动放宽该值
-- output: 初始 stop_secs=3.0，列为可调参数；metrics 记录判定来源，观察 fallback 率
+- output: stop_secs=1.2，列为可调参数；metrics 记录判定来源、抢话率与 fallback 率
 
 ### C4: barge-in 触发条件
 

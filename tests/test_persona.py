@@ -424,7 +424,7 @@ class TestLiveQwen:
             env.get("OPENAI_COMPATIBLE_URL")
             or "https://dashscope.aliyuncs.com/compatible-mode/v1"
         ).strip()
-        return (base, (env.get("QWEN_MODEL") or "qwen-turbo").strip(), key)
+        return (base, (env.get("QWEN_MODEL") or "qwen-flash").strip(), key)
 
     async def test_schema_stability_across_contexts(self):
         env = {

@@ -197,7 +197,7 @@ AgentReply 字段名原样复用**，不发明第二套词汇。
 {"type": "asr.final",      "text": "…"}
 {"type": "reply.delta",    "text": "…"}                    // 可选：流式上屏
 {"type": "reply.final",    "speech": "…", "emotion": "teasing", "energy": 0.7}
-{"type": "audio.chunk",    "seq": 3, "format": "pcm24k"}   // 数据走二进制帧，阶段 2/3 可选
+{"type": "audio.chunk",    "seq": 3, "format": "pcm24k"}   // 紧随一帧二进制 PCM；前端首块到达即用 Web Audio 调度播放，不等 reply.final
 {"type": "interrupted",    "heard_text": "…"}              // AGENT_INTERRUPTED 投影
 {"type": "latency",        "sefa_ms": 623, "barge_in_ms": 93}  // metrics 投影，UI 可展示
 {"type": "error",          "message": "…"}

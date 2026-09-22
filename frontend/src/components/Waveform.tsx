@@ -3,7 +3,7 @@ import type { NowPlaying } from '../audio/ReplyPlayer';
 
 /**
  * Waveform — monochrome hand-drawn bars from the reply's PCM peak envelope,
- * with a playhead driven by the HTMLAudioElement's currentTime (rAF).
+ * with a playhead driven by the AudioContext schedule's currentTime (rAF).
  */
 export function Waveform({ playing }: { playing: NowPlaying }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,8 +24,8 @@ export function Waveform({ playing }: { playing: NowPlaying }) {
       const fg = getComputedStyle(canvas).color || '#2b2b2b';
       const n = playing.envelope.length;
       const bw = w / n;
-      const progress = playing.audio.duration
-        ? playing.audio.currentTime / playing.audio.duration
+      const progress = playing.duration
+        ? playing.currentTime / playing.duration
         : 0;
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = fg;

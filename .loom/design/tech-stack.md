@@ -21,7 +21,7 @@ conversation/ + character/ + runtime coordination + metrics。
 | VAD | Silero VAD（只判 speech/non-speech） |
 | Turn Detection | Pipecat Smart Turn（不自训练） |
 | ASR | 阿里云百炼/通义听悟流式（DashScope；D-010 取代"暂不锁定"），key 已到位并实测通过 |
-| LLM | OpenAI-compatible 抽象；赛马名单 DeepSeek + 通义千问，TTFT > TPS |
+| LLM | OpenAI-compatible 抽象；默认百炼 `qwen-flash`（2026-09-22 同负载实测 TTFT mean 609ms、结构化 2/2；`qwen-turbo` 1678ms，3.7/3.8 flash 更慢），TTFT > TPS；模型仍可用 `QWEN_MODEL` 替换 |
 | TTS | 百炼 cosyvoice-v3-flash 为主力（D-014 赛马裁决，热 TTFA p50 976ms vs Fish 1090ms，取消均 100%）；Fish s2.1-pro-free adapter 保留为第二家可插路径；CosyVoice 本地自部署留后续 |
 | Transport | 第一版本地，不写死；LiveKit 留给后续多端 |
 

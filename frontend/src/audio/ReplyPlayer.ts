@@ -1,69 +1,125 @@
-import { pcmEnvelope, pcmFormatToRate, pcmToWavBlob } from './pcm';
+import { pcmEnvelope, pcmFormatToRate } from './pcm';
 
 /**
  * ReplyPlayer — stage 3 downlink playback (FRONTEND_DEMO_DESIGN.md §4.3).
  *
- * audio.chunk JSON headers carry {seq, format}; their payloads arrive as
- * binary frames. Chunks accumulate per turn; endTurn() assembles them into a
- * WAV Blob and plays through an HTMLAudioElement (boundary: browser
- * MediaSource/Audio only, no native wrapping). stopAll() is the local half of
- * barge-in: the moment the user starts talking (or an `interrupted` frame
- * lands), current playback halts and the pending buffer is dropped.
+ * True streaming: every audio.chunk binary payload becomes a mono AudioBuffer
+ * scheduled gaplessly on a shared AudioContext — the first chunk starts the
+ * turn, later chunks chain at nextStartTime (the browser resamples to the
+ * device rate). stopAll() is the local half of barge-in: all scheduled
+ * sources halt at once and the turn bookkeeping is dropped. The AudioContext
+ * is kept for reuse; unlock() from a user gesture satisfies autoplay policy.
  */
 
 export interface NowPlaying {
-  /** 0..1 peak envelope, one bar per bucket — waveform source data. */
-  envelope: number[];
-  /** Seconds. */
-  duration: number;
-  /** Live element; the waveform reads currentTime for the playhead. */
-  audio: HTMLAudioElement;
+  /** 0..1 peak envelope — grows as chunks arrive; waveform source data. */
+  readonly envelope: number[];
+  /** Scheduled turn length in seconds (grows while chunks arrive). */
+  readonly duration: number;
+  /** Playhead in seconds, clamped to 0..duration. */
+  readonly currentTime: number;
 }
 
 type Listener = (now: NowPlaying | null) => void;
 
+/** Envelope bars appended per chunk / kept in total — rAF reads, no React churn. */
+const ENVELOPE_BUCKETS_PER_CHUNK = 8;
+const ENVELOPE_MAX_BARS = 96;
+
 export class ReplyPlayer {
-  private chunks: Int16Array[] = [];
-  private rate = 24000;
-  private current: { audio: HTMLAudioElement; url: string } | null = null;
+  private ctx: AudioContext | null = null;
+  private sources = new Set<AudioBufferSourceNode>();
   private listeners = new Set<Listener>();
+  private readonly envelope: number[] = [];
+  /** ctx.currentTime when the current turn's first chunk starts. */
+  private turnStart = 0;
+  /** Schedule cursor: end time of the last scheduled chunk. */
+  private nextStart = 0;
+  /** A turn is being scheduled/played. */
+  private active = false;
+  /** endTurn() seen — no more chunks will arrive for this turn. */
+  private ended = false;
+  /** NowPlaying already emitted for the current turn. */
+  private emitted = false;
 
-  /** One binary payload + its audio.chunk header meta. */
+  /** User-gesture entry point: create/resume the shared AudioContext. */
+  async unlock(): Promise<void> {
+    const ctx = this.ensureCtx();
+    if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+  }
+
+  /** One binary payload + its audio.chunk header meta — plays immediately. */
   push(payload: ArrayBuffer, format: string): void {
-    if (this.chunks.length === 0) this.rate = pcmFormatToRate(format);
-    this.chunks.push(new Int16Array(payload));
-  }
+    const samples = new Int16Array(payload);
+    if (samples.length === 0) return;
+    const ctx = this.ensureCtx();
+    // Autoplay policy may still hold the context suspended; best effort.
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
 
-  get buffered(): boolean {
-    return this.chunks.length > 0;
-  }
+    const floats = new Float32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) floats[i] = samples[i] / 0x8000;
+    const buf = ctx.createBuffer(
+      1,
+      samples.length,
+      pcmFormatToRate(format),
+    );
+    buf.copyToChannel(floats, 0);
 
-  /** Turn boundary reached: assemble buffered PCM and start playback. */
-  endTurn(): void {
-    if (this.chunks.length === 0) return;
-    const samples = concat(this.chunks);
-    const rate = this.rate;
-    this.chunks = [];
-    const blob = pcmToWavBlob([samples], rate);
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    const now: NowPlaying = {
-      envelope: pcmEnvelope(samples),
-      duration: samples.length / rate,
-      audio,
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const start = Math.max(ctx.currentTime + 0.02, this.nextStart);
+    src.start(start);
+    if (!this.active) {
+      // First chunk of a new turn anchors the schedule.
+      this.active = true;
+      this.ended = false;
+      this.turnStart = start;
+    }
+    this.nextStart = start + buf.duration;
+    src.onended = () => {
+      this.sources.delete(src);
+      this.checkFinish();
     };
-    this.halt();
-    this.current = { audio, url };
-    audio.onended = () => this.finish(audio);
-    audio.onerror = () => this.finish(audio);
-    void audio.play().catch(() => this.finish(audio));
-    this.emit(now);
+    this.sources.add(src);
+
+    this.envelope.push(...pcmEnvelope(samples, ENVELOPE_BUCKETS_PER_CHUNK));
+    if (this.envelope.length > ENVELOPE_MAX_BARS) {
+      this.envelope.splice(0, this.envelope.length - ENVELOPE_MAX_BARS);
+    }
+    if (!this.emitted) {
+      this.emitted = true;
+      this.emit(this.snapshot());
+    }
   }
 
-  /** Barge-in: stop playback immediately and drop the pending buffer. */
+  /** Active or queued playback exists (scheduled sources not yet ended). */
+  get buffered(): boolean {
+    return this.sources.size > 0;
+  }
+
+  /** Turn boundary: no more chunks. Playback already started; emit null once
+   *  every scheduled source has ended. */
+  endTurn(): void {
+    this.ended = true;
+    this.checkFinish();
+  }
+
+  /** Barge-in: stop everything scheduled now and drop the turn. */
   stopAll(): void {
-    this.chunks = [];
-    this.halt();
+    for (const src of this.sources) {
+      try {
+        src.stop();
+      } catch {
+        // already ended
+      }
+    }
+    this.sources.clear();
+    this.active = false;
+    this.ended = false;
+    this.emitted = false;
+    this.nextStart = 0;
+    this.envelope.length = 0;
     this.emit(null);
   }
 
@@ -72,34 +128,41 @@ export class ReplyPlayer {
     return () => this.listeners.delete(listener);
   }
 
-  private halt(): void {
-    if (!this.current) return;
-    this.current.audio.onended = null;
-    this.current.audio.onerror = null;
-    this.current.audio.pause();
-    URL.revokeObjectURL(this.current.url);
-    this.current = null;
+  private ensureCtx(): AudioContext {
+    if (!this.ctx) {
+      this.ctx = new AudioContext({ latencyHint: 'interactive' });
+    }
+    return this.ctx;
   }
 
-  private finish(audio: HTMLAudioElement): void {
-    if (this.current?.audio !== audio) return;
-    URL.revokeObjectURL(this.current.url);
-    this.current = null;
+  /** Live view: duration/currentTime read straight off the ctx schedule. */
+  private snapshot(): NowPlaying {
+    const player = this;
+    return {
+      envelope: player.envelope,
+      get duration() {
+        return Math.max(0, player.nextStart - player.turnStart);
+      },
+      get currentTime() {
+        const ctx = player.ctx;
+        if (!ctx) return 0;
+        const t = ctx.currentTime - player.turnStart;
+        return Math.min(Math.max(0, t), this.duration);
+      },
+    };
+  }
+
+  private checkFinish(): void {
+    if (!this.active || !this.ended || this.sources.size > 0) return;
+    this.active = false;
+    this.ended = false;
+    this.emitted = false;
+    this.nextStart = 0;
+    this.envelope.length = 0;
     this.emit(null);
   }
 
   private emit(now: NowPlaying | null): void {
     for (const l of this.listeners) l(now);
   }
-}
-
-function concat(parts: Int16Array[]): Int16Array {
-  const total = parts.reduce((n, p) => n + p.length, 0);
-  const out = new Int16Array(total);
-  let off = 0;
-  for (const p of parts) {
-    out.set(p, off);
-    off += p.length;
-  }
-  return out;
 }

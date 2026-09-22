@@ -133,3 +133,15 @@ Current truth belongs in PROJECT.md and linked design documents. This file prese
 - Changed: data/tts_benchmark/latest.json, data/tts_benchmark/latest.md, src/providers/tts/fish_audio.py, src/providers/tts/bailian_cosyvoice.py, .loom/design/tech-stack.md
 - Affected tasks: TASK-008
 - At: 2026-09-22T01:37:42.023Z
+
+## D-2026-09-22-6thz: Smart Turn 中文 incomplete 兜底从 3.0 秒收紧为 1.2 秒；用户明确选择实时响应优先。正常模型判定路径仍由 VAD 0.2 秒 + Smart Turn 驱动，1.2 秒只用于模型误判 incomplete 的最坏兜底。继续记录 model/fallback 来源与抢话率；若真实长思考场景抢话明显，回调到 1.8 秒。反向打断用户暂不扩展，维持 D-008。
+
+- Changed: src/turn/smart_turn_adapter.py, src/runtime/audio_demo.py, src/runtime/simulated.py, tests/test_turn_adapters.py, .loom/design/system-architecture.md, .loom/capabilities/turn-taking/capability.md
+- Affected tasks: TASK-004, TASK-010
+- At: 2026-09-22T06:44:28.247Z
+
+## D-2026-09-22-q1bn: 实时语音默认 LLM 从 qwen-turbo 切换为 qwen-flash，并将浏览器回复播放从整句 WAV 缓冲改为首个 PCM 块到达即用 Web Audio 连续调度。依据同一派蒙结构化负载实测：qwen-flash TTFT mean 609ms、结构化 2/2；qwen-turbo 1678ms，qwen3.8-flash 7124ms，qwen3.7-flash 12441ms。WS audio.chunk 已是真流式，前端不再等待 reply.final；用户开口仍立即 stopAll 实现本地 barge-in。
+
+- Changed: src/runtime/main.py, src/runtime/ws_gateway.py, scripts/bench_llm.py, .env.example, frontend/src/audio/ReplyPlayer.ts, frontend/src/components/Waveform.tsx, frontend/src/App.tsx, .loom/design/tech-stack.md, .loom/design/FRONTEND_DEMO_DESIGN.md
+- Affected tasks: TASK-003, TASK-010, TASK-017, TASK-018
+- At: 2026-09-22T07:27:24.467Z

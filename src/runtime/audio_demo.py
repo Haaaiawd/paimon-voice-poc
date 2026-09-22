@@ -36,7 +36,7 @@ async def _run() -> None:
         f"max_duration_secs={turn.params.max_duration_secs})"
     )
     assert vad.params.stop_secs == 0.2
-    assert SMART_TURN_PARAMS.stop_secs == 3.0
+    assert SMART_TURN_PARAMS.stop_secs == 1.2
 
     def _on_complete(v):
         p = f"{v.probability:.3f}" if v.probability is not None else "n/a"

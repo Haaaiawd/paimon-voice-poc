@@ -8,9 +8,9 @@
 /** Contract uplink rate: PCM 16kHz/16bit/mono (§4.2). */
 export const UPLINK_RATE = 16000;
 
-/** "pcm24k" → 24000, "pcm16k" → 16000; unknown formats fall back to 24k. */
+/** "pcm24k" → 24000, "pcm44.1k" → 44100; unknown formats fall back to 24k. */
 export function pcmFormatToRate(format: string): number {
-  const m = /^pcm(\d+)k$/i.exec(format.trim());
+  const m = /^pcm(\d+(?:\.\d+)?)k$/i.exec(format.trim());
   return m ? Number(m[1]) * 1000 : 24000;
 }
 

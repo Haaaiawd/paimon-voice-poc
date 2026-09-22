@@ -331,7 +331,8 @@ class VoicePipeline:
         self._asr_queue.put_nowait(None)
         self._audio_done.set()
 
-    async def _asr_frames(self) -> AsyncIterator[bytes]:
+    async def _asr_frames(self, first: bytes) -> AsyncIterator[bytes]:
+        yield first
         while True:
             item = await self._asr_queue.get()
             if item is None:
@@ -339,26 +340,39 @@ class VoicePipeline:
             yield item
 
     async def _asr_loop(self) -> None:
-        try:
-            async for ev in self._asr.stream(
-                self._asr_frames(), sample_rate=self._asr_sample_rate
-            ):
-                et = (
-                    EventType.ASR_PARTIAL
-                    if ev.kind == "partial"
-                    else EventType.ASR_FINAL
+        """懒连接 + 断线重连：等首帧 PCM 进队才开 ASR 流（空闲期不占
+        socket，规避 DashScope WS 空闲超时）；流结束/异常后若音频源未
+        耗尽，阻塞等下一条首帧重连，进程生命周期内可反复恢复。"""
+        while True:
+            first = await self._asr_queue.get()
+            if first is None:
+                return
+            try:
+                async for ev in self._asr.stream(
+                    self._asr_frames(first),
+                    sample_rate=self._asr_sample_rate,
+                ):
+                    et = (
+                        EventType.ASR_PARTIAL
+                        if ev.kind == "partial"
+                        else EventType.ASR_FINAL
+                    )
+                    # 先发域事件（TurnManager 更新 last_text），再喂转写闸门——
+                    # 闸门可能立刻触发轮次完成，保证裁决拿到的是最新文本
+                    self.bus.publish(et, {"text": ev.text, "raw": ev.raw})
+                    await self._turn.feed_transcript(
+                        ev.text, finalized=ev.kind == "final"
+                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                self.errors.append(f"asr: {e}")
+                self.bus.publish(
+                    EventType.PIPELINE_ERROR,
+                    {"stage": "asr", "error": str(e)},
                 )
-                # 先发域事件（TurnManager 更新 last_text），再喂转写闸门——
-                # 闸门可能立刻触发轮次完成，保证裁决拿到的是最新文本
-                self.bus.publish(et, {"text": ev.text, "raw": ev.raw})
-                await self._turn.feed_transcript(
-                    ev.text, finalized=ev.kind == "final"
-                )
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            self.errors.append(f"asr: {e}")
-            self.bus.publish(EventType.PIPELINE_ERROR, {"stage": "asr", "error": str(e)})
+            if self._audio_done.is_set():
+                return
 
     async def _tick_loop(self) -> None:
         while True:
@@ -531,6 +545,7 @@ class VoicePipeline:
 
             async def produce() -> None:
                 nonlocal got_token
+                extracted_speech = False
                 async for token in self._agent.stream_reply(
                     messages,
                     response_format=_JSON_OBJECT_FORMAT,
@@ -544,8 +559,15 @@ class VoicePipeline:
                     raw_parts.append(token)
                     piece = extractor.feed(token)
                     if piece:
+                        extracted_speech = True
                         utterance.add_generated(piece)
                         for clause in chunker.feed(piece):
+                            chunk_q.put_nowait(clause)
+                if not extracted_speech:
+                    fallback = parse_agent_reply("".join(raw_parts))
+                    if fallback.speech:
+                        utterance.add_generated(fallback.speech)
+                        for clause in chunker.feed(fallback.speech):
                             chunk_q.put_nowait(clause)
                 for clause in chunker.flush():
                     utterance.add_generated(clause)

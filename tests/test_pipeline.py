@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -158,6 +159,26 @@ async def test_end_to_end_turn_records_all_timestamps(tmp_path):
         for e in heard
     )
     assert pipeline.core.state == ConversationState.IDLE
+
+
+async def test_json_string_reply_falls_back_to_speech_and_tts(tmp_path):
+    speech = "嘿，还在发呆吗？"
+    frames = [tone_frame() for _ in range(26)] + [silence_frame() for _ in range(20)]
+    pipeline, metrics, player, tts, _ = make_pipeline(
+        frames=frames,
+        vad_segments=[(0, 26)],
+        transcripts="派蒙你好",
+        reply=json.dumps(speech, ensure_ascii=False),
+        turn=ScriptedTurn(release_on_final=True),
+        tmp_path=tmp_path,
+    )
+
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    assert metrics.records[-1].reply_speech == speech
+    assert tts.synthesized
+    assert player.written_seconds > 0
 
 
 # ---------------------------------------------------------------- 投机分支
@@ -315,6 +336,95 @@ async def test_noop_reply_skips_tts_and_returns_idle():
     assert rec.closed and rec.stop_reason == "noop"
     assert rec.t_tts_request is None and rec.t_first_audio is None
     assert pipeline.core.state == ConversationState.IDLE
+
+
+# ---------------------------------------------------------------- ASR 懒连接/重连
+
+
+class _FlakyASR:
+    """前 fail_times 次连接即抛的假 ASR；之后消费完帧流吐一条 final。"""
+
+    def __init__(self, fail_times: int = 0) -> None:
+        self.calls = 0
+        self._fail_times = fail_times
+
+    def stream(self, frames, *, sample_rate):
+        self.calls += 1
+        call = self.calls
+
+        async def gen():
+            if call <= self._fail_times:
+                raise RuntimeError(f"asr boom #{call}")
+            async for _ in frames:
+                pass
+            yield SimpleNamespace(kind="final", text=f"第{call}连", raw=None)
+
+        return gen()
+
+
+async def test_asr_loop_lazy_connects_on_first_pcm():
+    """空闲期不开 ASR socket：首帧 PCM 进队前 provider.stream 不得被调用。"""
+    pipeline, *_ = make_pipeline(
+        frames=[], vad_segments=[], transcripts="x"
+    )
+    fake = _FlakyASR()
+    pipeline._asr = fake
+
+    task = asyncio.create_task(pipeline._asr_loop())
+    try:
+        await asyncio.sleep(0.05)
+        assert fake.calls == 0, "stream opened before first PCM frame"
+
+        pipeline._asr_queue.put_nowait(b"\x00" * 4)
+        for _ in range(200):
+            if fake.calls:
+                break
+            await asyncio.sleep(0.01)
+        assert fake.calls == 1
+    finally:
+        pipeline._audio_done.set()
+        pipeline._asr_queue.put_nowait(None)
+        await asyncio.wait_for(task, timeout=5)
+
+
+async def test_asr_loop_reconnects_after_provider_error():
+    """provider 异常 → 记 error + PIPELINE_ERROR；下一条 PCM 触发重连，
+    新流照常产出 ASR_FINAL（发布后喂转写闸门）。"""
+    pipeline, *_ = make_pipeline(
+        frames=[], vad_segments=[], transcripts="x"
+    )
+    fake = _FlakyASR(fail_times=1)
+    pipeline._asr = fake
+
+    task = asyncio.create_task(pipeline._asr_loop())
+    try:
+        pipeline._asr_queue.put_nowait(b"\x00" * 4)
+        for _ in range(200):
+            if pipeline.errors:
+                break
+            await asyncio.sleep(0.01)
+        assert fake.calls == 1
+        assert pipeline.errors and "asr" in pipeline.errors[0]
+        assert any(
+            e.type == EventType.PIPELINE_ERROR
+            and e.payload.get("stage") == "asr"
+            for e in pipeline.bus.history
+        )
+
+        pipeline._asr_queue.put_nowait(b"\x00" * 4)
+        pipeline._audio_done.set()
+        pipeline._asr_queue.put_nowait(None)
+        await asyncio.wait_for(task, timeout=5)
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    assert fake.calls == 2
+    finals = [
+        e for e in pipeline.bus.history if e.type == EventType.ASR_FINAL
+    ]
+    assert finals and finals[-1].payload["text"] == "第2连"
 
 
 # ---------------------------------------------------------------- 组件单测
