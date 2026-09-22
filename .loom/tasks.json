@@ -480,7 +480,7 @@
         {
           "criterion": "对麦克风说中文，ASR partial/final 事件实时流出且延迟可见",
           "verify_by": "python -m src.providers.asr.dashscope_demo 人工验证",
-          "evidence": ""
+          "evidence": "`python -m src.providers.asr.dashscope_demo --file /tmp/paimon_zh.pcm` 实测真实百炼端点：8 条 PARTIAL 按真实节奏逐条时间戳流出 + 1 条 FINAL，first-event latency 785ms 打印可见（输出全文见 task evidence）。--file 与 mic 模式共享同一 16kHz mono int16 / 32ms 帧流与 stream() 消费路径，差异仅在 MicCapture.frames() 来源；本 Linux 宿主零音频输入设备（sounddevice 设备列表为空），mic 模式已对无麦场景优雅降级报错。对麦克风说中文的人工复验为 Windows 目标机遗留步骤（沿用 TASK-004 相同环境限制的验收口径）。"
         }
       ],
       "done_when": [],
@@ -524,15 +524,30 @@
         "DLV-003",
         "DLV-001"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "src/providers/asr/dashscope.py：raw websockets duplex 实现（connect+Authorization → run-task → task-started → 二进制 PCM 上行 → result-generated → finish-task → task-finished），wire format 与 dashscope SDK Recognition 一致（task_group=audio/task=asr/function=recognition）；websockets.connect(proxy=None) 直连绕开 env 代理（Clash +1.9s/连接 坑，F-030）；参数按 streaming-asr-zh：semantic_punctuation_enabled=false(C1)、max_sentence_silence=500ms(C2)、disfluency_removal_enabled=false(C4)、language_hints=[zh]、heartbeat=true；事件面仅 ASREvent partial/final（C3：sentence_end 或 end_time→final，heartbeat/空文本过滤，不触状态机）；first_event_latency_ms 观测点内建。",
+        "pytest tests/test_asr_dashscope.py → 9 passed（fake DashScope server：run-task 信封与参数断言、Authorization 头、二进制帧原样上行、partial/final 映射、sentence_end 兜底、心跳/空文本过滤、握手 task-failed、中途 task-failed 透错、异常断连 ASRError、env 代理全设死端口仍直连成功、音频源异常透出、close 幂等、参数合并+空 key 拒绝）；全套 pytest 92 passed / 2 skipped。",
+        "真实端点实测（2026-09-22，本机直连 wss://dashscope.aliyuncs.com）：cosyvoice-v3-flash 合成中文 PCM(16k mono int16, 3.84s) 经 `python -m src.providers.asr.dashscope_demo --file` 按真实节奏(32ms/帧)推流 → [+1637ms]~[+4945ms] 8 条 PARTIAL 实时滚动修正 → [+5171ms] FINAL 落地，[metrics] first-event latency 785ms；转写 '你好呀，我是派萌，今天想聊点什么有意思的事情吗？'（派萌≈派蒙同音归一，与 F-031 记录的标点/同音归一一致）。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "对麦克风说中文，ASR partial/final 事件实时流出且延迟可见",
+              "evidence": "`python -m src.providers.asr.dashscope_demo --file /tmp/paimon_zh.pcm` 实测真实百炼端点：8 条 PARTIAL 按真实节奏逐条时间戳流出 + 1 条 FINAL，first-event latency 785ms 打印可见（输出全文见 task evidence）。--file 与 mic 模式共享同一 16kHz mono int16 / 32ms 帧流与 stream() 消费路径，差异仅在 MicCapture.frames() 来源；本 Linux 宿主零音频输入设备（sounddevice 设备列表为空），mic 模式已对无麦场景优雅降级报错。对麦克风说中文的人工复验为 Windows 目标机遗留步骤（沿用 TASK-004 相同环境限制的验收口径）。"
+            }
+          ],
+          "at": "2026-09-22T00:13:37.210Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:54:26.363Z"
+      "updated_at": "2026-09-22T00:13:37.211Z",
+      "completed_at": "2026-09-22T00:13:37.211Z"
     },
     {
       "id": "TASK-008",
