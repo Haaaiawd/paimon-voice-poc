@@ -105,6 +105,7 @@ class TestSystemPrompt:
         "语气：",
         "话题：",
         "记忆：",
+        "推进：",
         "语音：",
         "长度：",
         "只输出",
@@ -133,8 +134,8 @@ class TestSystemPrompt:
                 may_speak=False,
             ),
         )
-        assert len(prompt) < 700
-        assert len(prompt.splitlines()) <= 9
+        assert len(prompt) < 750
+        assert len(prompt.splitlines()) <= 10
         for line in prompt.splitlines():
             if line.startswith(("记忆：", "话题：")):
                 continue  # 数据载荷行，长度由数据内容决定
