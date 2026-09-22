@@ -522,11 +522,18 @@ def _build_providers(args, env):
     turn = SmartTurnAdapter(wait_for_transcript=True)
     asr = DashScopeASR(api_key=dash_key, **({"url": ws_url} if ws_url else {}))
     llm = OpenAICompatibleLLM(base_url=llm_base, api_key=dash_key, model=llm_model)
-    if fish_key:
+    # TTS_PROVIDER 显式选型：默认 bailian——Fish 跨境握手在本网络环境
+    # 实测持续超时（D-014 赛马结果）；海外/VPS 环境可设 TTS_PROVIDER=fish。
+    tts_kind = env.get("TTS_PROVIDER", "bailian").lower()
+    if tts_kind == "fish":
+        if not fish_key:
+            raise SystemExit("TTS_PROVIDER=fish 但缺少 FISH_API_KEY。")
         tts = FishAudioTTS(api_key=fish_key)
     else:
         tts = BailianCosyVoiceTTS(
-            api_key=dash_key, **({"url": ws_url} if ws_url else {})
+            api_key=dash_key,
+            **({"url": ws_url} if ws_url else {}),
+            **({"voice": env["TTS_VOICE"]} if env.get("TTS_VOICE") else {}),
         )
     return vad, turn, asr, llm, tts
 
@@ -573,6 +580,8 @@ def _load_env() -> dict[str, str]:
         "WS_GATEWAY_HOST",
         "WS_GATEWAY_PORT",
         "WS_GATEWAY_CORS_ORIGINS",
+        "TTS_PROVIDER",
+        "TTS_VOICE",
     ):
         if k in os.environ:
             env[k] = os.environ[k]

@@ -120,7 +120,7 @@ async def test_stream_protocol_and_audio():
     assert payload["function"] == "SpeechSynthesizer"
     assert payload["model"] == "cosyvoice-v3-flash"
     params = payload["parameters"]
-    assert params["voice"] == "longanhuan_v3"
+    assert params["voice"] == "longhuhu_v3"
     assert params["format"] == "pcm"
     assert params["sample_rate"] == 24000
     assert params["text_type"] == "PlainText"
