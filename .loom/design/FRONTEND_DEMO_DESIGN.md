@@ -196,6 +196,7 @@ AgentReply 字段名原样复用**，不发明第二套词汇。
 {"type": "asr.partial",    "text": "…"}
 {"type": "asr.final",      "text": "…"}
 {"type": "reply.delta",    "text": "…"}                    // 可选：流式上屏
+{"type": "reply.emotion",  "emotion": "teasing", "energy": 0.7} // 回复文本生成完毕即发，供 Godot 动作订阅
 {"type": "reply.final",    "speech": "…", "emotion": "teasing", "energy": 0.7}
 {"type": "audio.chunk",    "seq": 3, "format": "pcm24k"}   // 紧随一帧二进制 PCM；前端首块到达即用 Web Audio 调度播放，不等 reply.final
 {"type": "interrupted",    "heard_text": "…"}              // AGENT_INTERRUPTED 投影
@@ -205,6 +206,7 @@ AgentReply 字段名原样复用**，不发明第二套词汇。
 
 设计要点：
 - `reply.final` 字段名 = `AgentReply`（03 §6）原字段，emotion 受 05 §8 八标签集约束；
+- `reply.emotion` 在 `reply.final` 之前发送；浏览器忽略此动作提示，Godot 可据此在语音播放期间触发动作。`reply.final` 仍表示本轮完整回复；
 - `state` 枚举 = 状态机七态原名；
 - `latency` 帧让 demo 能秀出 SEFA 数字——呼应"延迟可观测"是项目卖点；
 - 未知 `type` 前端必须忽略（向前兼容纪律）。

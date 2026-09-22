@@ -211,6 +211,7 @@ function reducer(state: ChatState, action: Action): ChatState {
         // asr.partial / audio.chunk: partials aren't rendered; audio chunk
         // payloads arrive as binary frames on the backend's onAudio channel.
         case 'asr.partial':
+        case 'reply.emotion':
         case 'audio.chunk':
           return state;
       }

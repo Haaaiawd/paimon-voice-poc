@@ -862,13 +862,18 @@ class VoicePipeline:
                 await producer
             finally:
                 chunk_q.put_nowait(None)
-            await audio_task
-            audio_task = None
-
             reply = parse_agent_reply("".join(last_parts))
             # followup 用闸后实际交付值（回声追问已被丢）；speech 空但
             # followup 非空 = 她只问了问题——不算 NOOP。
             noop = is_noop(reply) and not final_followup.strip()
+            if not noop:
+                self.bus.publish(
+                    EventType.AGENT_REPLY_PREPARED,
+                    {"turn_id": turn_id, "emotion": reply.emotion, "energy": reply.energy},
+                )
+            await audio_task
+            audio_task = None
+
             self.bus.publish(
                 EventType.AGENT_REPLY,
                 {
