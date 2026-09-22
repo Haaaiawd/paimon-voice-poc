@@ -1,4 +1,4 @@
-"""mem0 记忆层实现：百炼 qwen-flash 抽取 + text-embedding-v3 向量 + 本地 Qdrant。
+"""mem0 记忆层实现：百炼 qwen3.5-omni-flash 抽取 + text-embedding-v3 向量 + 本地 Qdrant。
 
 接线（ws_gateway/main，MEMORY_PROVIDER=mem0 时启用）：
 - recall：pipeline 每轮拿 last_user_text 检索 → 结果进 system prompt
@@ -38,7 +38,7 @@ class Mem0MemoryProvider:
         *,
         api_key: str,
         base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        llm_model: str = "qwen-flash",
+        llm_model: str = "qwen3.5-omni-flash",
         embed_model: str = "text-embedding-v3",
         embed_dims: int = 1024,
         persist_dir: str | Path = "data/mem0",

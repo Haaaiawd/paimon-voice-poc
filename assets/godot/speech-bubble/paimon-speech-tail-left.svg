@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="54" viewBox="0 0 76 54" fill="none">
+  <!-- Place behind the panel's lower-left area: top 18 px overlap the panel. -->
+  <path d="M12 10H68L17 48.5C12.8 51.7 6.8 47.8 8.1 42.7L12 10Z" fill="#B9A4DC" opacity=".5"/>
+  <path d="M10 5H70L16.3 46.9C12.5 49.9 7.2 46.4 8.3 41.7L10 5Z" fill="#FFFDF8" stroke="#403760" stroke-width="5" stroke-linejoin="round"/>
+</svg>

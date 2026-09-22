@@ -284,7 +284,7 @@ class GatewayRuntime:
                 api_key=env["DASHSCOPE_API_KEY"],
                 base_url=env.get("OPENAI_COMPATIBLE_URL")
                 or "https://dashscope.aliyuncs.com/compatible-mode/v1",
-                llm_model=env.get("QWEN_MODEL") or "qwen-flash",
+                llm_model=env.get("QWEN_MODEL") or "qwen3.5-omni-flash",
                 embed_model=env.get("MEM0_EMBED_MODEL") or "text-embedding-v3",
                 persist_dir=env.get("MEM0_DIR") or (ROOT / "data" / "mem0"),
             )
@@ -551,7 +551,7 @@ def _build_providers(args, env):
         "OPENAI_COMPATIBLE_URL",
         "https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
-    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-flash")
+    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen3.5-omni-flash")
     ws_url = env.get("DASHSCOPE_WS_URL")
     vad = SileroVADAdapter()
     turn = SmartTurnAdapter(wait_for_transcript=True)

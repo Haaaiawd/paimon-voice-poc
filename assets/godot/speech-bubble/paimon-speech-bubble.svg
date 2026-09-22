@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200" fill="none">
+  <!--
+    P0 speech bubble panel. Safe 9-slice patch margins: left/right 30 px,
+    top/bottom 30 px. Keep tails as separate textures so the panel stays
+    freely resizable.
+  -->
+  <path d="M34 10H326C341.464 10 354 22.536 354 38V162C354 177.464 341.464 190 326 190H34C18.536 190 6 177.464 6 162V38C6 22.536 18.536 10 34 10Z" fill="#B9A4DC" opacity=".5"/>
+  <path d="M34 5H326C341.464 5 354 17.536 354 33V157C354 172.464 341.464 185 326 185H34C18.536 185 6 172.464 6 157V33C6 17.536 18.536 5 34 5Z" fill="#FFFDF8" stroke="#403760" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M34 17H326" stroke="#E7DDF5" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="31" cy="31" r="4" fill="#F1C4D4"/>
+  <circle cx="329" cy="31" r="4" fill="#F1C4D4"/>
+</svg>
