@@ -90,6 +90,7 @@ function reducer(state: ChatState, action: Action): ChatState {
           };
         }
         case 'reply.delta': {
+          if (!f.text) return { ...state, typing: false }; // 空增量不建气泡
           // Fold deltas into a single streaming Paimon bubble.
           const last = state.messages[state.messages.length - 1];
           if (last?.role === 'paimon' && last.streaming) {
@@ -116,6 +117,19 @@ function reducer(state: ChatState, action: Action): ChatState {
             energy: f.energy,
           };
           const last = state.messages[state.messages.length - 1];
+          // NOOP：模型选择不说（speech 空）。reply.final 是轮次生命周期
+          // 信号必须照常消费，但不渲染空气泡；若有空的 streaming 残留
+          // 气泡一并清掉。
+          if (!reply.speech.trim()) {
+            if (last?.role === 'paimon' && last.streaming && !last.text.trim()) {
+              return {
+                ...state,
+                typing: false,
+                messages: state.messages.slice(0, -1),
+              };
+            }
+            return { ...state, typing: false };
+          }
           if (last?.role === 'paimon' && last.streaming) {
             const done = { ...last, text: reply.speech, reply, streaming: false };
             return {
