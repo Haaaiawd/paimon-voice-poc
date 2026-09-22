@@ -45,7 +45,7 @@
       "slug": "paimon-persona",
       "title": "派蒙人格：Behavior Policy、情绪标签、结构化 LLM 输出",
       "kind": "feature",
-      "notes": "TASK-009 完成(2026-09-22)：src/character/ 落 Persona（身份/气质/长度基线/doc 05 §8 情绪标签集）+ BehaviorPolicy（§3-§7 规则面：短句默认、解释请求放宽、被打断标记、SILENCED 闸口、initiative-NOOP、显式覆盖）+ prompt 六槽位渲染（§10，无角色小说）+ CharacterAgent（doc 03 §5 输入→§6 AgentReply，speech 空=NOOP）。验收：pytest tests/test_persona.py 25 passed；真实 qwen-turbo 4 context 全部 schema 合法（emotion∈§8 标签集），initiative 冷场实测返回 NOOP。注：当前 .env 的 sk-ws-* key 为 workspace realtime 专用，chat/completions 拒收——live 测试自动 skip，实测用标准 key 完成。全仓 pytest 137 passed / 3 skipped。",
+      "notes": "TASK-009 完成(2026-09-22)：src/character/ 落 Persona（身份/气质/长度基线/doc 05 §8 情绪标签集）+ BehaviorPolicy（§3-§7 规则面：短句默认、解释请求放宽、被打断标记、SILENCED 闸口、initiative-NOOP、显式覆盖）+ prompt 六槽位渲染（§10，无角色小说）+ CharacterAgent（doc 03 §5 输入→§6 AgentReply，speech 空=NOOP）。验收：pytest tests/test_persona.py 25 passed；真实 qwen-turbo 4 context 全部 schema 合法（emotion∈§8 标签集），initiative 冷场实测返回 NOOP。注：当前 .env 的 sk-ws-* key 为 workspace realtime 专用，chat/completions 拒收——live 测试自动 skip，实测用标准 key 完成。全仓 pytest 137 passed / 3 skipped。 | 2026-09-22 prompt 精化（PRISMIX 分层 + architect-prompts 最小干预）：build_system_prompt 按 stable core（身份/语气，来自 Persona）→ environment adaptation（新增'语音：'槽位——speech 被 TTS 逐字念出，禁列表/markdown/emoji/括号注释；长度槽位加'直接回应对方最后一句'的 reactive 规则）→ current turn（被打断/主动开口/SILENCED 动态行）三层渲染；只保留改变行为的规则，无角色小说。tests/test_persona.py SLOT_PREFIXES 增 '语音：'，分层契约仍由槽位前缀白名单守住。",
       "covered_by": [
         "TASK-009"
       ],
@@ -100,7 +100,7 @@
       "slug": "provider-benchmarks",
       "title": "赛马脚本：LLM TTFT benchmark（TTS 双 adapter 赛马并入 TASK-008）",
       "kind": "verification",
-      "notes": "TASK-003 完成(2026-09-22)：scripts/bench_llm.py 对百炼 compatible-mode qwen3.7-flash 实测 20 次 TTFT streaming 探针 + 20 次 json_object 结构化探针（parse_agent_reply 线上口径）。结果：TTFT mean 16437ms / p50 13824ms / p95 26630ms；total p50 14038ms / p95 26978ms；structured 20/20 = 100%。DeepSeek 无 key → MISSING_KEY 优雅跳过。落盘 data/llm_benchmark/bench_20260922T035641Z.json + latest.{json,md}。注：.env 主 DASHSCOPE_API_KEY 为 sk-ws-* workspace realtime 专用 key，chat/completions 返回 401；本次实测用 DASHSCOPE_API_KEY_FALLBACK 标准 key（环境变量覆盖传入）。只做测量，未做选型结论。",
+      "notes": "TASK-003 完成(2026-09-22)：scripts/bench_llm.py 对百炼 compatible-mode qwen3.7-flash 实测 20 次 TTFT streaming 探针 + 20 次 json_object 结构化探针（parse_agent_reply 线上口径）。结果：TTFT mean 16437ms / p50 13824ms / p95 26630ms；total p50 14038ms / p95 26978ms；structured 20/20 = 100%。DeepSeek 无 key → MISSING_KEY 优雅跳过。落盘 data/llm_benchmark/bench_20260922T035641Z.json + latest.{json,md}。注：.env 主 DASHSCOPE_API_KEY 为 sk-ws-* workspace realtime 专用 key，chat/completions 返回 401；本次实测用 DASHSCOPE_API_KEY_FALLBACK 标准 key（环境变量覆盖传入）。只做测量，未做选型结论。 | 2026-09-22 更新：默认 LLM qwen3.7-flash → qwen-turbo，src/runtime/main.py、src/runtime/ws_gateway.py、scripts/bench_llm.py、.env.example 与 TASK-003 记录同步。依据：qwen-turbo TTFT ~928ms 进入实时语音可用区间（qwen3.7-flash 实测 p50≈14s 为 DEF-002/Q-007）；qwen-flash ~739ms 更快但能力待验证，保留为 low-latency mode 备选，QWEN_MODEL 可覆盖。",
       "covered_by": [
         "TASK-003"
       ],

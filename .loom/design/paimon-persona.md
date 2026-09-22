@@ -30,8 +30,9 @@
 ## Interfaces and dependencies
 
 人格由 Persona + Behavior Policy + Conversation State + Recent Context 共同决定；
-System Prompt 只给身份/语气/长度/当前行为限制/是否被打断/是否允许主动发言——
-不写几千字角色小说。
+System Prompt 按 PRISMIX 分层：stable core（身份/语气）→ 环境适配
+（speech 会被 TTS 念出的语音约束/长度/输出契约）→ 本轮限制
+（是否被打断/是否允许主动发言）——不写几千字角色小说。
 
 ## Failure, safety, and recovery
 

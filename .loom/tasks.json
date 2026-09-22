@@ -166,13 +166,13 @@
     },
     {
       "id": "TASK-003",
-      "title": "Qwen latency profiling（百炼 qwen3.7-flash）",
-      "outcome": "在百炼 compatible-mode 上对 qwen3.7-flash 做 ≥20 次 TTFT + 结构化输出探针，输出延迟画像（mean/p50/p95）与结构化成功率。",
+      "title": "Qwen latency profiling（百炼 qwen-turbo）",
+      "outcome": "在百炼 compatible-mode 上对 qwen-turbo 做 ≥20 次 TTFT + 结构化输出探针，输出延迟画像（mean/p50/p95）与结构化成功率。",
       "acceptance": [
         {
-          "criterion": "benchmark 脚本对 qwen3.7-flash 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
+          "criterion": "benchmark 脚本对 qwen-turbo 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
           "verify_by": "python scripts/bench_llm.py 输出含实测数据的表格",
-          "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}，structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
+          "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}（该组数据为 qwen3.7-flash 实测；2026-09-22 起 bench 与运行时默认模型改为 qwen-turbo），structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
         },
         {
           "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",
@@ -214,7 +214,7 @@
         "completed": [
           "scripts/bench_llm.py 已实现：支持多 endpoint 配置，key/model 走环境变量",
           "tests/test_bench_llm.py 6 passed：MISSING_KEY 跳过、分位数数学、MockTransport 全链路测量",
-          "默认模型切换为 qwen3.7-flash（da919a6）",
+          "默认模型 qwen3.7-flash → qwen-turbo（2026-09-22：qwen-turbo TTFT ~928ms vs qwen3.7-flash p50≈14s，适配实时语音；qwen-flash ~739ms 留作 low-latency mode 备选）",
           "兜底标准 key 已写入 .env（额度少，优先用官方 key）"
         ],
         "current": "complete",
@@ -226,12 +226,13 @@
         "结果已落盘 data/llm_benchmark/bench_20260921T183917Z.json + latest.json + latest.md",
         "2026-09-22T03:56Z 实跑 .venv/bin/python scripts/bench_llm.py --runs 20：qwen3.7-flash（百炼 compatible-mode）20/20 TTFT 探针成功，TTFT mean 16437ms / p50 13824ms / p95 26630ms，total p50 14038ms / p95 26978ms；结构化探针 20/20 = 100%（json_object + parse_agent_reply 口径）。DeepSeek 无 key 标注 MISSING_KEY 跳过。结果落盘 data/llm_benchmark/bench_20260922T035641Z.json + latest.json + latest.md。",
         ".env 主 DASHSCOPE_API_KEY 为 sk-ws-* workspace realtime 专用 key，chat/completions 401；实测经环境变量覆盖使用 DASHSCOPE_API_KEY_FALLBACK 标准 key。",
+        "2026-09-22 默认 LLM 切换 qwen3.7-flash → qwen-turbo：src/runtime/main.py、src/runtime/ws_gateway.py、scripts/bench_llm.py、.env.example 同步更新。理由：qwen-turbo TTFT ~928ms（vs qwen3.7-flash 实测 p50≈14s，DEF-002/Q-007），进入实时语音可用区间；qwen-flash ~739ms 更快但能力待验证，保留为 low-latency mode 备选（QWEN_MODEL 环境变量可覆盖）。",
         {
           "type": "acceptance_results",
           "results": [
             {
-              "criterion": "benchmark 脚本对 qwen3.7-flash 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
-              "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}，structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
+              "criterion": "benchmark 脚本对 qwen-turbo 跑 ≥20 次 TTFT 探针（streaming chat）+ ≥20 次结构化探针（json_object），输出 TTFT mean/p50/p95 与结构化成功率",
+              "evidence": "data/llm_benchmark/latest.json：qwen ttft_ms {n:20, mean:16437, p50:13824, p95:26630}（该组数据为 qwen3.7-flash 实测；2026-09-22 起 bench 与运行时默认模型改为 qwen-turbo），structured {attempts:20, success:20, rate:1.0}；终端表格输出见 data/llm_benchmark/latest.md"
             },
             {
               "criterion": "脚本在 key 缺失时优雅跳过并在输出中标注 MISSING_KEY",

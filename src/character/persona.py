@@ -2,8 +2,9 @@
 
 人格不由 system prompt 单独决定——Persona + Behavior Policy +
 Conversation State + Recent Context 共同决定（doc 05 §10）。本模块
-只承载四个静态面：身份、气质、长度基线、情绪标签集。语气词表按
-可渲染子句组织，prompt 层直接拼装，不写角色小说。
+是 PRISMIX 分层里的 stable core，只承载四个不随轮次变化的静态面：
+身份、气质、长度基线、情绪标签集。语气词表按可渲染子句组织，
+prompt 层直接拼装，不写角色小说。
 """
 
 from __future__ import annotations

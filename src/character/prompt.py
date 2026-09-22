@@ -1,9 +1,11 @@
 """System prompt 与 messages 构造（doc 05 §10 / doc 03 §3、§5）。
 
-doc 05 §10：System Prompt 不写角色小说，只提供六个槽位——
-身份 / 语气 / 长度 / 输出契约 / 当前是否被打断 / 当前是否允许主动发言
-（SILENCED 为防御行，正常链路在 agent 层已被闸口拦下、不会到这里）。
-`build_system_prompt` 的每个槽位是一条独立规则行，无叙事段落。
+doc 05 §10：System Prompt 不写角色小说。渲染按 PRISMIX 三层组织——
+stable core（身份 + 气质，来自 Persona，不随轮次变化）→
+environment adaptation（语音输出约束 + 长度基线 + 输出契约）→
+current turn（本轮动态行为限制：被打断 / 主动开口 / SILENCED，
+命中才渲染；SILENCED 为防御行，正常链路在 agent 层已被闸口拦下）。
+每个槽位一条独立规则行，无叙事段落；规则只保留能改变行为的句子。
 
 doc 03 §5 的 agent input 经 `build_messages` 渲染：recent_heard_history
 进 user/assistant 角色位（heard 面，被打断轮次带 —— 截断标记），
@@ -27,26 +29,32 @@ TRUNCATION_MARK = "——"
 
 
 def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> str:
-    """渲染六个槽位的 system prompt；每个槽位一条规则行。"""
+    """渲染分层 system prompt；每个槽位一条规则行。"""
     lines = [
-        # 身份
+        # ── stable core：身份与人格价值 ──
         f"你是{persona.identity}。",
-        # 语气
         f"语气：{'；'.join(persona.tone)}。",
-        # 长度
+        # ── environment adaptation：实时语音约束 ──
+        # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
+        "语音：speech 会被 TTS 直接念出来——口语短句，"
+        "不要列表、markdown、emoji、括号注释。",
         (
             f"长度：用户在要求解释，可以答完整，但仍控制在 "
             f"{constraints.max_sentences} 句以内。"
             if constraints.long_answer
-            else f"长度：{constraints.max_sentences} 句以内的短句，口语优先，不长篇解释。"
+            else (
+                f"长度：{constraints.max_sentences} 句以内，"
+                "直接回应对方最后一句，不长篇解释。"
+            )
         ),
-        # 输出契约（doc 03 §6 schema；emotion 枚举 = doc 05 §8）
+        # ── capability module：输出契约与闭嘴能力（doc 03 §6 schema；
+        # emotion 枚举 = doc 05 §8）──
         '只输出一个 JSON 对象 {"speech": string, "emotion": '
         + "|".join(EMOTION_TAG_ORDER)
         + ' 之一, "energy": 0到1的小数, "should_continue": bool}；'
         "不要输出任何其他文字。无话可说时 speech 为空字符串。",
     ]
-    # 当前行为限制（动态槽位，命中才渲染）
+    # ── current turn：本轮行为限制（动态槽位，命中才渲染）──
     if constraints.was_interrupted:
         lines.append(
             "你上一句被打断了：不要自动补完原句，按上下文放弃、"

@@ -96,12 +96,14 @@ class TestEmotionTags:
 
 
 class TestSystemPrompt:
-    """acceptance 2：prompt 只含 doc 05 §10 允许的槽位，不写角色小说。"""
+    """acceptance 2：prompt 只含分层槽位（stable core/环境适配/本轮限制），
+    不写角色小说。"""
 
-    #: 允许出现的槽位行前缀（身份/语气/长度/输出契约/行为限制）。
+    #: 允许出现的槽位行前缀（身份/语气/语音/长度/输出契约/行为限制）。
     SLOT_PREFIXES = (
         "你是",
         "语气：",
+        "语音：",
         "长度：",
         "只输出",
         "你上一句被打断了",

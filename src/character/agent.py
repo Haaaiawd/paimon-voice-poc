@@ -52,7 +52,7 @@ class CharacterAgent:
     def build_messages(
         self, agent_input: Mapping[str, Any]
     ) -> list[ChatMessage]:
-        """doc 03 §5 输入 → chat messages（含六字槽 system prompt）。"""
+        """doc 03 §5 输入 → chat messages（含分层槽位 system prompt）。"""
         constraints = self.constraints_for(agent_input)
         return build_messages(self.persona, agent_input, constraints)
 
