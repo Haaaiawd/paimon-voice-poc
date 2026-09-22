@@ -15,6 +15,8 @@ PC 本地的实时中文语音 Companion 原型——角色是**派蒙**。
   → WS audio.chunk + PCM 下行 → 浏览器首块即播
 ```
 
+双目 Godot 游戏可作为同一网关的第二个 WebSocket 客户端订阅 `reply.emotion`，将回复的 `emotion`/`energy` 映射为三维派蒙动作；浏览器仍负责麦克风与音频播放。回复文本生成完毕时先发 `reply.emotion`，原有 `reply.final` 仍在音频播放完成后发送。默认游戏连接端口为 8766，和拍照预览的 8765 分开；映射与启动见上层仓库 `godotplayer/game-101/PAIMON-ACTIONS.md`。未启动网关时游戏会自行重连，不影响双目采集。
+
 - 判停：VAD 0.2s + Smart Turn 模型判定，中文误判兜底 **1.2s**（实测 ~0.85s）
 - LLM：默认 `qwen-flash`（同负载实测 TTFT ~609ms），`QWEN_MODEL` 可换
 - TTS：默认 `cosyvoice-v3-flash` / `longhuhu_v3`（天真烂漫女童），`TTS_PROVIDER`/`TTS_VOICE` 可换

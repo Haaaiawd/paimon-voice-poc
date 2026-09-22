@@ -165,7 +165,7 @@ async def test_ws_text_turn_full_event_stream(tmp_path):
     assert states[-1] == "IDLE"
     assert set(states) <= PIPELINE_STATES
 
-    # 顺序：partial → final → THINKING → delta(s) → reply.final
+    # 顺序：partial → final → THINKING → delta(s) → emotion → reply.final
     i = _ordered_index(frames, lambda f: f["type"] == "asr.partial")
     assert frames[i]["text"] == USER_TEXT
     i = _ordered_index(frames, lambda f: f["type"] == "asr.final", i)
@@ -174,8 +174,15 @@ async def test_ws_text_turn_full_event_stream(tmp_path):
         frames, lambda f: f == {"type": "state", "state": "THINKING"}, i
     )
     i = _ordered_index(frames, lambda f: f["type"] == "reply.delta", i)
+    i = _ordered_index(frames, lambda f: f["type"] == "reply.emotion", i)
+    prepared = frames[i]
+    assert set(prepared) == {"type", "emotion", "energy"}
+    assert prepared["emotion"] in EMOTION_LABELS
+    assert 0 <= prepared["energy"] <= 1
     i = _ordered_index(frames, lambda f: f["type"] == "reply.final", i)
     reply = frames[i]
+    assert prepared["emotion"] == reply["emotion"]
+    assert prepared["energy"] == reply["energy"]
 
     # reply.final 字段 = AgentReply 原名（speech/emotion/energy），emotion ∈ §8 标签集
     assert set(reply) == {"type", "speech", "followup", "emotion", "energy"}

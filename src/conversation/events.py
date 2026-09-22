@@ -45,6 +45,7 @@ class EventType(StrEnum):
     TURN_INCOMPLETE = "TURN_INCOMPLETE"  # Smart Turn 判 incomplete 的域事件
     STATE_CHANGED = "STATE_CHANGED"  # 状态机迁移通知（Terminal UI / metrics 用）
     PROMPT_PREBUILT = "PROMPT_PREBUILT"  # 投机执行：partial 驱动的 prompt 预构造完成
+    AGENT_REPLY_PREPARED = "AGENT_REPLY_PREPARED"  # emotion ready while audio is playing
     AGENT_REPLY = "AGENT_REPLY"  # 结构化回复解析完成（speech/emotion/energy）
     PIPELINE_ERROR = "PIPELINE_ERROR"  # 管线环节异常（stage/error 字段；Terminal UI 展示）
 

@@ -70,6 +70,7 @@ export type ServerFrame =
   | { type: 'asr.partial'; text: string }
   | { type: 'asr.final'; text: string }
   | { type: 'reply.delta'; text: string; field?: 'speech' | 'followup' }
+  | { type: 'reply.emotion'; emotion: Emotion; energy: number }
   | {
       type: 'reply.final';
       speech: string;
@@ -94,6 +95,7 @@ export const SERVER_FRAME_TYPES = [
   'asr.final',
   'reply.delta',
   'reply.final',
+  'reply.emotion',
   'audio.chunk',
   'interrupted',
   'latency',

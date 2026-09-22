@@ -65,6 +65,7 @@ _PROJECTED_EVENTS = (
     EventType.STATE_CHANGED,
     EventType.ASR_PARTIAL,
     EventType.ASR_FINAL,
+    EventType.AGENT_REPLY_PREPARED,
     EventType.AGENT_REPLY,
     EventType.AGENT_INTERRUPTED,
     EventType.PLAYBACK_STOPPED,
@@ -209,6 +210,8 @@ def project_event(
             return [{"type": "asr.partial", "text": p.get("text", "")}]
         case EventType.ASR_FINAL:
             return [{"type": "asr.final", "text": p.get("text", "")}]
+        case EventType.AGENT_REPLY_PREPARED:
+            return [{"type": "reply.emotion", "emotion": p.get("emotion") or "neutral", "energy": p.get("energy", 0.5)}]
         case EventType.AGENT_REPLY:
             if p.get("error"):
                 return [{"type": "error", "message": p["error"]}]
