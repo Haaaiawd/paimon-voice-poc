@@ -264,12 +264,12 @@ class LatencyLog:
                     self.current.turn_source = event.payload.get("source")
                     self.current.user_text = event.payload.get("text", "")
             case EventType.ASR_FINAL:
-                # 迟到尾帧（轮次已封账）仍回填最近一条记录，便于离线统计。
-                rec = self.current or (
-                    self.records[-1] if self.records else None
-                )
-                if rec is not None and rec.t_asr_final is None:
-                    rec.t_asr_final = event.ts
+                if self.current is not None:
+                    # 轮内多次断句 final：取最后一次（最贴近轮次完成时刻）。
+                    self.current.t_asr_final = event.ts
+                elif self.records and self.records[-1].t_asr_final is None:
+                    # 轮次已封账的迟到尾帧：仅当该轮从未记过 final 才回填。
+                    self.records[-1].t_asr_final = event.ts
             case EventType.PROMPT_PREBUILT:
                 if self.current is not None:
                     self.current.prompt_prebuilt_at = event.ts

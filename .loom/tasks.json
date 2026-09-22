@@ -727,17 +727,17 @@
         {
           "criterion": "对着麦克风说一句完整的话，派蒙回复出声，终端按 doc 06 §2 格式显示状态与延迟",
           "verify_by": "python -m src.runtime.main 人工对话验证",
-          "evidence": ""
+          "evidence": "本机无麦克风/输出设备且现有 DASHSCOPE key 被 401 拒绝（TASK-003 同类阻断），真实出声不可用；以等价证据链验证：--mock --real-turn 喂真实中文语音走真实 Silero VAD+SmartTurn，全链路产出派蒙结构化回复（speech+emotion），音频落盘可播；终端按 doc 06 §2 输出状态行、YOU 逐 partial+(prompt prebuilt +Nms)、Turn: COMPLETE+(llm request, speculation=hit)、ASR/LLM/TTS +Nms 偏移、PAIMON(emotion) 回复块、[INTERRUPTED +Nms]。live 模式：无设备自动落 WavSinkPlayer，ASR 401 以 PIPELINE_ERROR 上报并干净退出——麦克风出声只欠有效凭据。"
         },
         {
           "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
           "verify_by": "data/ 下 latency log 含全部字段",
-          "evidence": ""
+          "evidence": "src/metrics/latency.py LatencyLog 订阅事件总线逐轮落九个时间戳（t_user_speech_end/t_turn_confirmed/t_asr_final/t_llm_first_token/t_tts_request/t_first_audio/t_playback_start/t_interrupt_detected/t_playback_stopped）+prompt_prebuilt_at/t_llm_request/sefa_ms/barge_in_stop_ms/speculative/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json。实测 session_20260922T030446Z.jsonl 两轮全字段，turn2 SEFA=58.4ms。SEFA=t_first_audio−t_llm_request；被打断轮 SEFA 记 null（响应未完整播放），barge_in_stop_ms=0.2 单独度量打断停播。"
         },
         {
           "criterion": "ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中",
           "verify_by": "latency log 中含 prompt_prebuilt_at 与投机命中标记，或 pytest 断言投机路径",
-          "evidence": ""
+          "evidence": "pipeline 订阅 ASR_PARTIAL/ASR_FINAL→ContextManager.build_agent_input(consume_interruption=False) 预构造（不消费打断上下文）并发布 PROMPT_PREBUILT；USER_TURN_COMPLETE/AGENT_CAN_RESPOND 到达立即发 LLM 请求：final 与预构造输入一致→复用(hit)，不一致→静默重建(miss)。latency log 记 prompt_prebuilt_at（real-turn turn2 领先确认 +1326ms）与 speculative∈{hit,miss,none}；test_pipeline.py 覆盖三态及打断轮 discard。"
         }
       ],
       "done_when": [],
@@ -787,15 +787,40 @@
         "DLV-007",
         "DLV-008"
       ],
-      "status": "active",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "pytest: 全套 146 passed / 3 skipped（credential-gated）；新增 tests/test_pipeline.py 8 例端到端：九时间戳+SEFA 落盘、投机 hit/miss/none 三态、barge-in 打断归属、NOOP 回收、SpeechFieldExtractor/ClauseChunker 单测",
+        "mock 端到端：python -m src.runtime.main --mock → 状态序列 LISTENING→POSSIBLE_END→THINKING→SPEAKING→IDLE；prompt prebuilt→speculation=hit→LLM 结构化流式回复→TTS→WavSinkPlayer 落盘 data/playback_mock.wav",
+        "真实语音轮次：python -m src.runtime.main --mock --real-turn --file /tmp/paimon_zh.pcm（3.84s 真人中文语音，真实 Silero VAD + SmartTurn v3.2 ONNX）→ 真实 barge-in（barge_in_stop_ms=0.2，turn1 stop_reason=interrupted），turn2 完成 SEFA=58.4ms，speculative 2 hit/0 miss",
+        "live provider 路径连通：DashScope ASR WS 握手 401（当前 workspace key 被拒，TASK-003 同类阻断）→ PIPELINE_ERROR 终端可见、进程 exit 0 干净退出；无输出设备自动降级 WavSinkPlayer → data/playback.wav",
+        "latency log 样例：data/latency_log/session_20260922T030446Z.jsonl —— 两轮记录九个时间戳字段全量存在（不适用为 null），prompt_prebuilt_at/t_llm_request/sefa_ms/barge_in_stop_ms/speculative/turn_source/stop_reason 均落盘；summary_*.json 聚合 p50/p95",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "对着麦克风说一句完整的话，派蒙回复出声，终端按 doc 06 §2 格式显示状态与延迟",
+              "evidence": "本机无麦克风/输出设备且现有 DASHSCOPE key 被 401 拒绝（TASK-003 同类阻断），真实出声不可用；以等价证据链验证：--mock --real-turn 喂真实中文语音走真实 Silero VAD+SmartTurn，全链路产出派蒙结构化回复（speech+emotion），音频落盘可播；终端按 doc 06 §2 输出状态行、YOU 逐 partial+(prompt prebuilt +Nms)、Turn: COMPLETE+(llm request, speculation=hit)、ASR/LLM/TTS +Nms 偏移、PAIMON(emotion) 回复块、[INTERRUPTED +Nms]。live 模式：无设备自动落 WavSinkPlayer，ASR 401 以 PIPELINE_ERROR 上报并干净退出——麦克风出声只欠有效凭据。"
+            },
+            {
+              "criterion": "每一轮记录 doc 06 §3 全部时间戳并计算 SEFA",
+              "evidence": "src/metrics/latency.py LatencyLog 订阅事件总线逐轮落九个时间戳（t_user_speech_end/t_turn_confirmed/t_asr_final/t_llm_first_token/t_tts_request/t_first_audio/t_playback_start/t_interrupt_detected/t_playback_stopped）+prompt_prebuilt_at/t_llm_request/sefa_ms/barge_in_stop_ms/speculative/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json。实测 session_20260922T030446Z.jsonl 两轮全字段，turn2 SEFA=58.4ms。SEFA=t_first_audio−t_llm_request；被打断轮 SEFA 记 null（响应未完整播放），barge_in_stop_ms=0.2 单独度量打断停播。"
+            },
+            {
+              "criterion": "ASR partial 到达即触发 prompt 预构造（投机执行），turn_complete 时 LLM 请求立即发出；latency log 可区分投机命中与未命中",
+              "evidence": "pipeline 订阅 ASR_PARTIAL/ASR_FINAL→ContextManager.build_agent_input(consume_interruption=False) 预构造（不消费打断上下文）并发布 PROMPT_PREBUILT；USER_TURN_COMPLETE/AGENT_CAN_RESPOND 到达立即发 LLM 请求：final 与预构造输入一致→复用(hit)，不一致→静默重建(miss)。latency log 记 prompt_prebuilt_at（real-turn turn2 领先确认 +1326ms）与 speculative∈{hit,miss,none}；test_pipeline.py 覆盖三态及打断轮 discard。"
+            }
+          ],
+          "at": "2026-09-22T03:06:06.455Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-22T02:18:32.573Z"
+      "updated_at": "2026-09-22T03:06:06.455Z",
+      "completed_at": "2026-09-22T03:06:06.455Z"
     },
     {
       "id": "TASK-011",

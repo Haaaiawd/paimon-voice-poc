@@ -88,6 +88,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--min-barge-in-s", type=float, default=0.0, help="最短打断时长门槛"
     )
+    p.add_argument("--verbose", action="store_true", help="保留 pipecat DEBUG 日志")
     return p.parse_args()
 
 
@@ -289,6 +290,14 @@ def main() -> None:
         except Exception:
             pass
     args = _parse_args()
+    if not args.verbose:
+        try:
+            from loguru import logger
+
+            logger.remove()
+            logger.add(sys.stderr, level="WARNING")
+        except Exception:
+            pass
     try:
         raise SystemExit(asyncio.run(_run(args)))
     except KeyboardInterrupt:

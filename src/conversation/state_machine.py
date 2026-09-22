@@ -39,9 +39,11 @@ class ConversationState(StrEnum):
 _TRANSITIONS: dict[
     tuple[ConversationState, EventType], ConversationState
 ] = {
-    # IDLE：用户开口 → 听；agent 主动开口（InitiativePolicy 路径）→ 说
+    # IDLE：用户开口 → 听；agent 主动开口（InitiativePolicy 路径）→ 说；
+    # asr_implied 轮次（VAD 漏收 start）在 IDLE 完成 → 思考
     (ConversationState.IDLE, EventType.USER_SPEECH_STARTED): ConversationState.LISTENING,
     (ConversationState.IDLE, EventType.AGENT_SPEAKING): ConversationState.SPEAKING,
+    (ConversationState.IDLE, EventType.USER_TURN_COMPLETE): ConversationState.THINKING,
     # LISTENING：VAD 报停顿 → 疑似说完（不是完成，turn-taking C1）
     (ConversationState.LISTENING, EventType.USER_SPEECH_STOPPED): ConversationState.POSSIBLE_END,
     # 兜底：complete 先于/无 VAD stop 边到达（如 fallback 直判）也能进思考

@@ -53,6 +53,8 @@ class TerminalUI:
         self._echo_partials = echo_partials
         self._last_partial = ""
         self._interrupt_pending = False  # 已迁 INTERRUPTED，等 +ms 数字
+        self._interrupt_ts: float | None = None
+        self._latency_printed = False  # 本轮延迟三行已打出（补 late-final 用）
         for et in (
             EventType.STATE_CHANGED,
             EventType.ASR_PARTIAL,
@@ -63,6 +65,7 @@ class TerminalUI:
             EventType.LLM_STARTED,
             EventType.FIRST_AUDIO,
             EventType.AGENT_REPLY,
+            EventType.AGENT_INTERRUPTED,
             EventType.PLAYBACK_STOPPED,
             EventType.PIPELINE_ERROR,
         ):
@@ -87,15 +90,33 @@ class TerminalUI:
                 if text and text != self._last_partial:
                     self._print(f"YOU: {text}")
                 self._last_partial = text
+                if self._latency_printed:
+                    # 延迟块已按 FIRST_AUDIO 时刻打出；迟到 final（如未开
+                    # transcript 闸门的脚本链路）补一行，不留 n/a。
+                    rec = self._metrics.current
+                    base = (
+                        (rec.t_user_speech_end or rec.t_turn_confirmed)
+                        if rec
+                        else None
+                    )
+                    off = (
+                        rec.offset_ms("t_asr_final", base) if rec else None
+                    )
+                    if off is not None:
+                        self._print(f"ASR final: {_fmt_ms(off)}")
             case EventType.TURN_INCOMPLETE:
                 self._print("Turn: INCOMPLETE")
             case EventType.USER_TURN_COMPLETE:
+                self._latency_printed = False
                 self._print("Turn: COMPLETE")
             case EventType.PROMPT_PREBUILT:
                 rec = self._metrics.current
                 base = rec.t_user_speech_end if rec else None
-                off = (event.ts - base) * 1000 if base is not None else None
-                self._print(f"  (prompt prebuilt {_fmt_ms(off)})")
+                if base is None:
+                    self._print("  (prompt prebuilt)")
+                else:
+                    off = (event.ts - base) * 1000
+                    self._print(f"  (prompt prebuilt {_fmt_ms(off)})")
             case EventType.LLM_STARTED:
                 spec = event.payload.get("speculative")
                 if spec:
@@ -116,35 +137,55 @@ class TerminalUI:
                     f"[error:{event.payload.get('stage')}] "
                     f"{event.payload.get('error')}"
                 )
+            case EventType.AGENT_INTERRUPTED:
+                self._interrupt_ts = event.ts
             case EventType.PLAYBACK_STOPPED:
-                if event.payload.get("reason") == "interrupted":
-                    rec = self._interrupted_record()
-                    ms = rec.barge_in_stop_ms if rec else None
-                    self._print(f"[INTERRUPTED {_fmt_ms(ms)}]")
+                # 兜底：interrupted 停播但 INTERRUPTED→LISTENING 迁移没发生过
+                # （如 THINKING 中被打断直接回 LISTENING）也要出数字行。
+                if (
+                    event.payload.get("reason") == "interrupted"
+                    and self._interrupt_pending
+                ):
+                    self._print_interrupted_line()
+                    self._print("[LISTENING]")
                     self._interrupt_pending = False
 
     def _on_state_changed(self, event: Event) -> None:
         to = event.payload.get("to")
         if to == ConversationState.INTERRUPTED:
-            # doc 形态是 `[INTERRUPTED +93ms]`：等停播数字到了一起打
+            # doc 形态是 `[INTERRUPTED +93ms]`：PLAYBACK_STOPPED 驱动的
+            # INTERRUPTED→LISTENING 迁移到达时带数字一次性打印。
             self._interrupt_pending = True
             return
         if self._interrupt_pending:
-            # 停播事件没跟上（异常路径），先把未带数字的标记补上
-            self._print("[INTERRUPTED]")
+            if to == ConversationState.LISTENING:
+                # 停播已发生（嵌套派发：本迁移即 PLAYBACK_STOPPED 引起），
+                # 按 doc 形态先 INTERRUPTED 行再 LISTENING。
+                self._print_interrupted_line()
+            else:
+                # 非典型路径：没等到停播，先补无数字标记
+                self._print("[INTERRUPTED]")
             self._interrupt_pending = False
         self._print(f"[{to}]")
 
+    def _print_interrupted_line(self) -> None:
+        """`[INTERRUPTED +Nms]`：打断检测到停播的耗时（barge-in stop latency）。"""
+        ms = None
+        if self._interrupt_ts is not None:
+            ms = (self._now() - self._interrupt_ts) * 1000
+        self._print(f"[INTERRUPTED {_fmt_ms(ms)}]")
+
     def _print_latency_block(self) -> None:
-        """doc §2 的三行延迟：以 t_user_speech_end 为 +0 基准。"""
+        """doc §2 的三行延迟：以 t_user_speech_end 为 +0 基准。
+
+        无 VAD 停顿的轮次（silence_fallback/asr_implied）以
+        t_turn_confirmed 做基准，保证三行始终有数字可读。
+        """
         rec = self._metrics.current
-        base = rec.t_user_speech_end if rec else None
+        base = None
+        if rec is not None:
+            base = rec.t_user_speech_end or rec.t_turn_confirmed
+        self._latency_printed = True
         self._print(f"ASR final: {_fmt_ms(rec.offset_ms('t_asr_final', base) if rec else None)}")
         self._print(f"LLM first token: {_fmt_ms(rec.offset_ms('t_llm_first_token', base) if rec else None)}")
         self._print(f"TTS first audio: {_fmt_ms(rec.offset_ms('t_first_audio', base) if rec else None)}")
-
-    def _interrupted_record(self):
-        for rec in reversed(self._metrics.records):
-            if rec.t_interrupt_detected is not None:
-                return rec
-        return None

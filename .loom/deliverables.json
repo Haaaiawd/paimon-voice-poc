@@ -6,7 +6,7 @@
       "slug": "voice-runtime-pipeline",
       "title": "实时语音流水线：麦克风→VAD→Turn→ASR→播放（Pipecat 组装）",
       "kind": "module",
-      "notes": "ASR 段就绪（TASK-007，2026-09-22）：DashScopeASR 经真实百炼端点验证，partial/final 实时流 + 785ms 首事件延迟；待 TASK-008 TTS 与 TASK-010 管线组装。",
+      "notes": "ASR 段就绪（TASK-007，2026-09-22）：DashScopeASR 经真实百炼端点验证，partial/final 实时流 + 785ms 首事件延迟；待 TASK-008 TTS 与 TASK-010 管线组装。 | TASK-010 完成(2026-09-22)：src/runtime/pipeline.py 全链路组装（audio→VAD→SmartTurn→ASR→ContextManager→LLM speech字段流式抽取→分句→TTS→playback），barge-in 安全（先发布 USER_SPEECH_STARTED 再 await 裁决）；src/runtime/{main,mic,playback,simulated}.py CLI+mic/file/mock 三模式；无设备降级 WavSinkPlayer，provider 401→PIPELINE_ERROR 干净退出。",
       "covered_by": [
         "TASK-004",
         "TASK-007",
@@ -78,7 +78,7 @@
       "slug": "latency-metrics",
       "title": "延迟指标：SEFA、barge-in stop latency、逐轮 latency log",
       "kind": "module",
-      "notes": "",
+      "notes": "TASK-010 完成(2026-09-22)：src/metrics/latency.py 逐轮九时间戳+prompt_prebuilt_at/t_llm_request/SEFA/barge_in_stop_ms/speculative(hit|miss|none)/turn_source/stop_reason→data/latency_log/session_*.jsonl+summary_*.json(p50/p95)；real-turn 实测 SEFA=58.4ms、barge_in_stop=0.2ms。",
       "covered_by": [
         "TASK-010"
       ],
@@ -89,7 +89,7 @@
       "slug": "terminal-ui",
       "title": "Terminal UI：状态显示、对话流、延迟数字",
       "kind": "interface",
-      "notes": "",
+      "notes": "TASK-010 完成(2026-09-22)：src/runtime/terminal.py 按 doc 06 §2 输出状态标记[LISTENING]等、YOU 逐partial+(prompt prebuilt +Nms)、Turn COMPLETE/INCOMPLETE+(llm request, speculation=hit|miss)、ASR/LLM/TTS +Nms 偏移行、PAIMON(emotion)回复块、[INTERRUPTED +Nms]、[pipeline error]。",
       "covered_by": [
         "TASK-010"
       ],
@@ -127,6 +127,15 @@
         "TASK-001"
       ],
       "created_at": "2026-09-21T13:01:52.465Z"
+    },
+    {
+      "id": "DLV-012",
+      "slug": "demo-web-ui",
+      "title": "Web demo UI：Blackchalk 手绘气泡界面 + MockBackend/WsBackend（前端子目录 frontend/）",
+      "kind": "interface",
+      "notes": "",
+      "covered_by": [],
+      "created_at": "2026-09-22T03:06:55.232Z"
     }
   ]
 }

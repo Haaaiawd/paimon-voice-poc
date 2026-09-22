@@ -381,20 +381,14 @@ class VoicePipeline:
                 return
 
     def _idle(self) -> bool:
+        # 音频源与 ASR 流都已收尾后，未关闭的轮次不可能再被裁决
+        # （无新音频喂 VAD/Smart Turn，无新转写放行闸门）——respond
+        # 任务结清即视为 idle，不管 TurnManager.turn_open。
         asr_done = self._tasks[1].done()  # asr-loop
         respond_done = (
             self._respond_task is None or self._respond_task.done()
         )
-        return (
-            asr_done
-            and respond_done
-            and not self.core.turn_manager.turn_open
-            and self.core.state
-            in (
-                ConversationState.IDLE,
-                ConversationState.LISTENING,
-            )
-        )
+        return asr_done and respond_done
 
     # ---- 投机预构造（C6） ----
 
