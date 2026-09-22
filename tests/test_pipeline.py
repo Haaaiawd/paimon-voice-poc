@@ -244,7 +244,8 @@ async def test_barge_in_interrupts_and_records(tmp_path):
     # 首个 speech 帧即吐全句 partial：打断场景里泵与 ASR 消费天然赛跑，
     # 用 partial_every=1 保证轮次完成前 _last_text 已定。
     asr = ScriptedASR(
-        ["我觉得这个项目吧", "你闭嘴"],
+        # 第二轮文本避开静默指令词（"你闭嘴"会触发 TASK-011 SILENCED 语义）
+        ["我觉得这个项目吧", "换一个话题"],
         partial_every=1,
         chars_per_partial=99,
     )
@@ -287,7 +288,7 @@ async def test_barge_in_interrupts_and_records(tmp_path):
     assert tts.cancelled_count >= 1  # TTS 被取消
     # 第二轮正常完成
     assert second.stop_reason == "completed"
-    assert second.user_text == "你闭嘴"
+    assert second.user_text == "换一个话题"
 
 
 # ---------------------------------------------------------------- NOOP

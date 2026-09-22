@@ -172,6 +172,7 @@ class VoicePipeline:
         auto_stop: bool = False,
         auto_stop_settle_s: float = 0.8,
         min_barge_in_s: float = 0.0,
+        initiative_config: Any = None,
         now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self._audio = audio
@@ -190,6 +191,7 @@ class VoicePipeline:
             playback=player,
             tts=tts,
             min_barge_in_s=min_barge_in_s,
+            initiative_config=initiative_config,
             now_fn=now_fn,
         )
         self.bus: EventBus = self.core.bus
@@ -216,6 +218,9 @@ class VoicePipeline:
         # user_speech_stopped 返回的 incomplete verdict 只发 TURN_INCOMPLETE。
         self._turn.on_turn_complete = self._on_turn_verdict
         self.bus.subscribe(EventType.AGENT_CAN_RESPOND, self._on_can_respond)
+        self.bus.subscribe(
+            EventType.INITIATIVE_TRIGGERED, self._on_initiative
+        )
         # partial 与 final 都触发预构造：final 常比最后一条 partial 更完整，
         # 在闸门放行（TURN_COMPLETE）前同步刷新 prebuilt，最大化 hit 率。
         self.bus.subscribe(EventType.ASR_PARTIAL, self._on_asr_partial)
@@ -458,13 +463,61 @@ class VoicePipeline:
         messages = self._agent.build_messages(agent_input)
         return agent_input, messages, ("miss" if prebuilt else "none")
 
-    async def _respond(self, turn_id: int, text: str) -> None:
-        ctx = self.core.context
-        _, messages, spec = self._resolve_prompt(turn_id, text)
-        utterance = ctx.begin_utterance()
-        self.bus.publish(
-            EventType.LLM_STARTED, {"turn_id": turn_id, "speculative": spec}
+    def _on_initiative(self, event: Event) -> None:
+        """INITIATIVE_TRIGGERED → 主动开口响应（"允许问一次"，LLM 可 NOOP）。
+
+        触发到执行间有竞态：只在 IDLE 且无在途轮次/响应时真开口——其余
+        情况静默丢弃这次触发（政策层已扣 cooldown，不会连环重试）。
+        """
+        assert self._loop is not None
+        if (
+            self.core.state is not ConversationState.IDLE
+            or self.core.turn_manager.turn_open
+            or (
+                self._respond_task is not None
+                and not self._respond_task.done()
+            )
+        ):
+            return
+        self._respond_task = self._loop.create_task(
+            self._respond_initiative(event.payload)
         )
+
+    async def _respond(self, turn_id: int, text: str) -> None:
+        _, messages, spec = self._resolve_prompt(turn_id, text)
+        await self._speak(
+            turn_id,
+            messages,
+            llm_payload={"turn_id": turn_id, "speculative": spec},
+        )
+
+    async def _respond_initiative(self, payload: dict[str, Any]) -> None:
+        """主动开口：initiative_reason 进 agent input（BehaviorPolicy 据此
+        允许 NOOP）；utterance 照常开账——出声前被用户开口掐掉走六步打断。"""
+        agent_input = self.core.context.build_agent_input(
+            state=ConversationState.IDLE,
+            last_user_text="",
+            initiative_reason=payload.get("reason"),
+            silence_duration_ms=payload.get("silence_ms") or 0,
+        )
+        messages = self._agent.build_messages(agent_input)
+        await self._speak(
+            None,
+            messages,
+            llm_payload={"initiative": True, "speculative": "none"},
+        )
+
+    async def _speak(
+        self,
+        turn_id: int | None,
+        messages: list,
+        *,
+        llm_payload: dict[str, Any],
+    ) -> None:
+        """共用响应体：LLM 流 → speech 抽取 → chunker → TTS → 播放 → 封账。"""
+        ctx = self.core.context
+        utterance = ctx.begin_utterance()
+        self.bus.publish(EventType.LLM_STARTED, llm_payload)
         task = asyncio.current_task()
         if task is not None:
             self.core.interruption.track_llm(task.cancel)

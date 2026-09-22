@@ -323,6 +323,9 @@ class LatencyLog:
 
         SPEAKING 中被打断 → t_playback_start 已记；THINKING 中被打断
         （LLM 在途未出声）→ t_llm_request 已记。两者都算"被切的轮次"。
+
+        找不到在途响应轮次时返回 None：initiative 响应被用户开口掐掉、
+        或 utterance 未起就打断时，不能把账记到新开的用户轮次上。
         """
         for rec in reversed(self.records):
             if not rec.closed and (
@@ -330,14 +333,17 @@ class LatencyLog:
                 or rec.t_llm_request is not None
             ):
                 return rec
-        return self.current
+        return None
 
     def _record_for_playback_stop(self, event: Event) -> TurnRecord | None:
         reason = event.payload.get("reason")
         if reason == "interrupted":
+            # 只封"标记过打断"的轮次；无匹配（如无轮次的 initiative 响应
+            # 被打断）时不动 current——否则用户新轮次会被误封成 interrupted。
             for rec in reversed(self.records):
                 if not rec.closed and rec.t_interrupt_detected is not None:
                     return rec
+            return None
         return self.current
 
     def _last_speech_started_ts(self, *, before: float) -> float | None:

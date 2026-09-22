@@ -14,6 +14,12 @@ from .events import (
     EventBus,
     EventType,
 )
+from .initiative import (
+    InitiativeConfig,
+    InitiativePolicy,
+    SilenceClassifier,
+    parse_silence_duration,
+)
 from .interruption import InterruptionManager
 from .state_machine import ConversationState, ConversationStateMachine
 from .turn_manager import TurnManager
@@ -32,7 +38,11 @@ __all__ = [
     "Event",
     "EventBus",
     "EventType",
+    "InitiativeConfig",
+    "InitiativePolicy",
     "InterruptionManager",
+    "SilenceClassifier",
     "SpokenSegment",
     "TurnManager",
+    "parse_silence_duration",
 ]

@@ -14,6 +14,7 @@ from typing import Any
 
 from .context import ContextManager
 from .events import Event, EventBus, EventType
+from .initiative import InitiativeConfig, InitiativePolicy, SilenceClassifier
 from .interruption import InterruptionManager, PlaybackLike, TTSLike
 from .state_machine import (
     DEFAULT_SILENCE_WINDOW_S,
@@ -34,6 +35,7 @@ class ConversationCore:
         playback: PlaybackLike | None = None,
         tts: TTSLike | None = None,
         min_barge_in_s: float = 0.0,
+        initiative_config: InitiativeConfig | None = None,
         now_fn: Callable[[], float] = time.monotonic,
     ) -> None:
         self.bus = bus or EventBus(now_fn=now_fn)
@@ -51,6 +53,16 @@ class ConversationCore:
             min_barge_in_s=min_barge_in_s,
             now_fn=now_fn,
         )
+        # TASK-011：规则分类器（ASR_FINAL→SILENCE_REQUESTED/唤醒）与主动性评分。
+        # 订阅顺序在 interruption 之后：ASR_FINAL 先走完轮次/上下文记账再判静默。
+        self.silence_rules = SilenceClassifier(self.bus, self.machine)
+        self.initiative = InitiativePolicy(
+            self.bus,
+            self.machine,
+            self.turn_manager,
+            config=initiative_config,
+            now_fn=now_fn,
+        )
 
     @property
     def state(self) -> ConversationState:
@@ -62,7 +74,10 @@ class ConversationCore:
         return self.bus.publish(event_type, payload)
 
     def tick(self, now: float | None = None) -> bool:
-        return self.machine.tick(now)
+        """时钟推进：SILENCED 窗口超时 + InitiativePolicy 评分（主动开口闸）。"""
+        changed = self.machine.tick(now)
+        self.initiative.tick(now)
+        return changed
 
     def wake(self) -> bool:
         return self.machine.wake()

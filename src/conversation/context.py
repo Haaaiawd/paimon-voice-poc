@@ -147,7 +147,9 @@ class ContextManager:
         utterance.played_s = utterance.audio_s if played_s is None else played_s
         utterance.heard = utterance.spoken_text
         utterance.not_heard = utterance.generated[len(utterance.heard) :]
-        self._commit(utterance)
+        if utterance.generated:
+            # 全空 utterance（NOOP 轮）不入历史：没有内容可记。
+            self._commit(utterance)
         self.current_utterance = None
         return utterance
 
@@ -163,6 +165,14 @@ class ContextManager:
         """
         utterance = utterance or self.current_utterance
         if utterance is None or not utterance.open:
+            return None
+        if not utterance.generated:
+            # 出声前就被掐掉且未生成任何文本（如 initiative 响应被用户开口
+            # 取消）：静默封盘，不入双历史也不产 interruption context——
+            # 用户视角派蒙什么都没说。
+            utterance.open = False
+            if utterance is self.current_utterance:
+                self.current_utterance = None
             return None
         utterance.open = False
         utterance.interrupted = True

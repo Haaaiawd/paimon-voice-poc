@@ -67,7 +67,7 @@
    "slug": "initiative-behavior",
    "title": "主动插话规则与 SILENCED 状态",
    "kind": "behavior",
-   "notes": "",
+   "notes": "TASK-011 完成(2026-09-22)：src/conversation/initiative.py 落地 doc 03 §2.3——InitiativePolicy 可解释评分(silence_duration+interesting_context+direct_mention+conversation_energy−recently_spoke)与硬规则 user_is_speaking/silenced/response_in_flight/cooldown/min_silence→NEVER_SPEAK；SilenceClassifier 纯规则消费 ASR_FINAL 发 SILENCE_REQUESTED（'两分钟'等时长解析覆盖默认窗口），SILENCED 中 ASR 持续转写、轮次照常裁决但不发 AGENT_CAN_RESPOND，'派蒙'直呼 wake 退出、超时 silence_timeout 兜底。VoicePipeline 订阅 INITIATIVE_TRIGGERED，仅 IDLE 放行一次 LLM 调用（可返回空 speech → NOOP）。pytest tests/test_initiative.py+tests/test_silenced.py 39 passed，全量 191 passed。",
    "covered_by": [
     "TASK-011"
    ],

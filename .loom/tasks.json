@@ -830,17 +830,17 @@
         {
           "criterion": "评分公式与硬规则按 doc 03 §2.3 实现，LLM 可返回 NOOP",
           "verify_by": "pytest tests/test_initiative.py 覆盖 silence/说话中/超时场景",
-          "evidence": ""
+          "evidence": "pytest tests/test_initiative.py → 13 passed。覆盖：min_silence 地板、silence 满权重触发+cooldown 单次触发、触发后沉默基准复位、recently_spoke 负项(-0.4)、direct_mention(+0.6)/interesting_context(+0.4) 加速、conversation_energy(+0.3)、user_is_speaking/silenced/response_in_flight 三硬闸口；pipeline 级两例：INITIATIVE_TRIGGERED → 恰好一次 LLM 调用且出声；initiative 轮返回空 speech → NOOP 不进 TTS、空 utterance 不入 heard history。"
         },
         {
           "criterion": "SILENCE_REQUESTED 由 Core 内规则分类器基于 ASR_FINAL 文本产出（不走 LLM）；SILENCED 中 ASR 持续转写，含'派蒙'直呼或超时退出",
           "verify_by": "pytest tests/test_silenced.py 断言进入/退出路径与规则匹配表",
-          "evidence": ""
+          "evidence": "pytest tests/test_silenced.py → 26 passed。SilenceClassifier（core 内，纯规则表+否定豁免如'别闭嘴'，无 LLM 依赖）消费 ASR_FINAL 发 SILENCE_REQUESTED；parse_silence_duration 覆盖'两分钟/30秒/半个小时'（parametrize 7 例）；SILENCED 中 USER_TURN_COMPLETE 照常裁决而 AGENT_CAN_RESPOND 为空（ASR 持续证据）；'派蒙起床啦' wake 退出、'派蒙先别说话'不误唤醒、超时 silence_timeout 退出、显式时长覆盖默认窗口均断言通过。"
         },
         {
           "criterion": "用户说'闭嘴'后进入 SILENCED，窗口内不主动发言，喊派蒙可唤醒",
           "verify_by": "端到端或集成测试验证",
-          "evidence": ""
+          "evidence": "tests/test_silenced.py::test_e2e_silence_then_wake 通过真实 VoicePipeline 三段语音集成验证：'问一句→你闭嘴→派蒙起床啦'；断言 SILENCE_REQUESTED 发出、STATE_CHANGED 含 IDLE→SILENCED 与 SILENCED→IDLE(trigger=wake)、3 轮全裁决但 AGENT_CAN_RESPOND 恰 2 次、非 initiative LLM 请求恰 2 次、快触发配置下 SILENCED 窗口内零 INITIATIVE_TRIGGERED。"
         }
       ],
       "done_when": [],
@@ -868,15 +868,36 @@
       "covers": [
         "DLV-006"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "src/conversation/initiative.py 落地 InitiativePolicy（doc 03 §2.3 可解释评分 silence_duration+interesting_context+direct_mention+conversation_energy−recently_spoke，硬规则 user_is_speaking/silenced/response_in_flight/cooldown/min_silence → NEVER_SPEAK）与 SilenceClassifier（ASR_FINAL 规则分类 → SILENCE_REQUESTED，支持'两分钟'等时长解析与'派蒙'直呼唤醒，不走 LLM）。ConversationCore 组装两组件并 tick 驱动；VoicePipeline 订阅 INITIATIVE_TRIGGERED，仅在 IDLE 且无在途轮次/响应时发起一次 LLM 调用（LLM 可返回空 speech → NOOP 不合成不出声）。验证：pytest tests/test_initiative.py tests/test_silenced.py → 39 passed；全量 pytest → 191 passed, 3 skipped；python -m runtime.main --mock 端到端冒烟正常。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "评分公式与硬规则按 doc 03 §2.3 实现，LLM 可返回 NOOP",
+              "evidence": "pytest tests/test_initiative.py → 13 passed。覆盖：min_silence 地板、silence 满权重触发+cooldown 单次触发、触发后沉默基准复位、recently_spoke 负项(-0.4)、direct_mention(+0.6)/interesting_context(+0.4) 加速、conversation_energy(+0.3)、user_is_speaking/silenced/response_in_flight 三硬闸口；pipeline 级两例：INITIATIVE_TRIGGERED → 恰好一次 LLM 调用且出声；initiative 轮返回空 speech → NOOP 不进 TTS、空 utterance 不入 heard history。"
+            },
+            {
+              "criterion": "SILENCE_REQUESTED 由 Core 内规则分类器基于 ASR_FINAL 文本产出（不走 LLM）；SILENCED 中 ASR 持续转写，含'派蒙'直呼或超时退出",
+              "evidence": "pytest tests/test_silenced.py → 26 passed。SilenceClassifier（core 内，纯规则表+否定豁免如'别闭嘴'，无 LLM 依赖）消费 ASR_FINAL 发 SILENCE_REQUESTED；parse_silence_duration 覆盖'两分钟/30秒/半个小时'（parametrize 7 例）；SILENCED 中 USER_TURN_COMPLETE 照常裁决而 AGENT_CAN_RESPOND 为空（ASR 持续证据）；'派蒙起床啦' wake 退出、'派蒙先别说话'不误唤醒、超时 silence_timeout 退出、显式时长覆盖默认窗口均断言通过。"
+            },
+            {
+              "criterion": "用户说'闭嘴'后进入 SILENCED，窗口内不主动发言，喊派蒙可唤醒",
+              "evidence": "tests/test_silenced.py::test_e2e_silence_then_wake 通过真实 VoicePipeline 三段语音集成验证：'问一句→你闭嘴→派蒙起床啦'；断言 SILENCE_REQUESTED 发出、STATE_CHANGED 含 IDLE→SILENCED 与 SILENCED→IDLE(trigger=wake)、3 轮全裁决但 AGENT_CAN_RESPOND 恰 2 次、非 initiative LLM 请求恰 2 次、快触发配置下 SILENCED 窗口内零 INITIATIVE_TRIGGERED。"
+            }
+          ],
+          "at": "2026-09-22T03:34:12.147Z"
+        }
+      ],
       "created_at": "2026-09-21T13:23:15.213Z",
-      "updated_at": "2026-09-21T13:54:26.964Z"
+      "updated_at": "2026-09-22T03:34:12.147Z",
+      "completed_at": "2026-09-22T03:34:12.147Z"
     },
     {
       "id": "TASK-012",

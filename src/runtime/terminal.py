@@ -63,6 +63,7 @@ class TerminalUI:
             EventType.USER_TURN_COMPLETE,
             EventType.PROMPT_PREBUILT,
             EventType.LLM_STARTED,
+            EventType.INITIATIVE_TRIGGERED,
             EventType.FIRST_AUDIO,
             EventType.AGENT_REPLY,
             EventType.AGENT_INTERRUPTED,
@@ -117,10 +118,17 @@ class TerminalUI:
                 else:
                     off = (event.ts - base) * 1000
                     self._print(f"  (prompt prebuilt {_fmt_ms(off)})")
+            case EventType.INITIATIVE_TRIGGERED:
+                self._print(
+                    f"  (initiative: {event.payload.get('reason')})"
+                )
             case EventType.LLM_STARTED:
-                spec = event.payload.get("speculative")
-                if spec:
-                    self._print(f"  (llm request, speculation={spec})")
+                if event.payload.get("initiative"):
+                    self._print("  (initiative llm request)")
+                else:
+                    spec = event.payload.get("speculative")
+                    if spec:
+                        self._print(f"  (llm request, speculation={spec})")
             case EventType.FIRST_AUDIO:
                 self._print_latency_block()
             case EventType.AGENT_REPLY:
