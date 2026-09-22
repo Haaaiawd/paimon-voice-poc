@@ -82,6 +82,9 @@ class _Task:
     done: asyncio.Event = field(default_factory=asyncio.Event)
     error: Exception | None = None
     pump: asyncio.Task[None] | None = None
+    sent_texts: list[str] = field(default_factory=list)  # 已发送文本（重试重放用）
+    saw_audio: bool = False  # 已收到过音频帧
+    retried: bool = False  # 干净关闭已重试过
 
 
 class BailianCosyVoiceTTS(TTSProvider):
@@ -269,6 +272,7 @@ class BailianCosyVoiceTTS(TTSProvider):
                     if not text:
                         continue
                     await ws.send(self._continue_task_message(state.task_id, text))
+                    state.sent_texts.append(text)  # 重试重放用
                 await ws.send(self._finish_task_message(state.task_id))
                 state.finish_sent = True
             except websockets.ConnectionClosed:
@@ -279,36 +283,69 @@ class BailianCosyVoiceTTS(TTSProvider):
                 await self._drop_ws()  # 文本源挂了 → 让接收侧退出
 
         try:
-            await ws.send(self._run_task_message(state.task_id))
-            state.in_recv = True
-            await self._wait_started(ws, state)
-            state.in_recv = False
+            while True:
+                ws = await self._ensure_ws()
+                try:
+                    await ws.send(self._run_task_message(state.task_id))
+                    state.in_recv = True
+                    await self._wait_started(ws, state)
+                    state.in_recv = False
 
-            state.pump = asyncio.create_task(pump())
-            while not state.done.is_set():
-                state.in_recv = True
-                raw = await ws.recv()  # cancel() 不碰 recv，见 docstring
-                state.in_recv = False
-                if isinstance(raw, (bytes, bytearray)):
-                    if state.cancelled:
-                        continue  # 残余帧排空丢弃，不上抛（cancel 契约 1/2）
-                    if self.last_ttfa_ms is None:
-                        self.last_ttfa_ms = (time.monotonic() - t0) * 1000
-                    yield bytes(raw)
-                else:
-                    self._route_event(raw, state)
-            if state.error is not None:
-                raise state.error
-        except websockets.ConnectionClosed as e:
-            if state.error is not None:
-                raise state.error from e
-            if state.done.is_set() or state.cancelled:
-                pass  # 正常收尾 / cancel 超时强断
-            else:
-                await self._drop_ws()
-                raise TTSError(
-                    f"connection closed before task-finished: {e}"
-                ) from e
+                    if state.retried:
+                        # 重试路径：泵已完成（finish_sent），文本全量重放
+                        for t in state.sent_texts:
+                            await ws.send(
+                                self._continue_task_message(state.task_id, t)
+                            )
+                        await ws.send(
+                            self._finish_task_message(state.task_id)
+                        )
+                    else:
+                        state.pump = asyncio.create_task(pump())
+                    while not state.done.is_set():
+                        state.in_recv = True
+                        raw = await ws.recv()  # cancel() 不碰 recv，见 docstring
+                        state.in_recv = False
+                        if isinstance(raw, (bytes, bytearray)):
+                            if state.cancelled:
+                                continue  # 残余帧排空丢弃，不上抛（cancel 契约 1/2）
+                            if self.last_ttfa_ms is None:
+                                self.last_ttfa_ms = (time.monotonic() - t0) * 1000
+                            state.saw_audio = True
+                            yield bytes(raw)
+                        else:
+                            self._route_event(raw, state)
+                    if state.error is not None:
+                        raise state.error
+                    break
+                except websockets.ConnectionClosed as e:
+                    if state.error is not None:
+                        raise state.error from e
+                    if state.done.is_set() or state.cancelled:
+                        break  # 正常收尾 / cancel 超时强断
+                    clean = e.rcvd is not None and e.rcvd.code == 1000
+                    if (
+                        clean
+                        and not state.saw_audio
+                        and state.finish_sent
+                        and not state.retried
+                    ):
+                        # 服务端在出声前干净关闭（空闲回收/实例漂移）：
+                        # 文本泵已完成 → 换新连接整任务重放一次
+                        state.retried = True
+                        state.started = False
+                        state.task_id = uuid.uuid4().hex
+                        await self._drop_ws()
+                        continue
+                    if clean:
+                        # 已出过声或泵还在跑：按截断收尾，不把对端
+                        # 正常关闭甩成用户可见的连接异常
+                        state.done.set()
+                        break
+                    await self._drop_ws()
+                    raise TTSError(
+                        f"connection closed before task-finished: {e}"
+                    ) from e
         finally:
             state.in_recv = False
             if state.pump is not None and not state.pump.done():

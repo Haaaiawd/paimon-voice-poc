@@ -223,6 +223,24 @@ class TestInterruptionSixSteps:
         assert tts.cancel_calls == 1
         assert core.state == S.LISTENING
 
+    def test_interruption_fires_once_per_speech_burst(self):
+        """一次打断只出现一次：VAD 在同一段用户发言里多次
+        speech_started，只产生一条打断记录、一次 AGENT_INTERRUPTED。"""
+        core, playback, tts, llm = make_core(played_s=1.3)
+        drive_to_speaking(core)
+        doc_utterance(core)
+        core.bus.clear_history()
+
+        for _ in range(3):  # 用户发言中 VAD 抖动连发
+            core.publish(E.USER_SPEECH_STARTED)
+
+        assert len(core.interruption.interruptions) == 1
+        assert (
+            sum(1 for e in core.bus.history if e.type == E.AGENT_INTERRUPTED)
+            == 1
+        )
+        assert core.state == S.LISTENING
+
     def test_barge_in_without_utterance_recovers_to_listening(self):
         """兜底：SPEAKING 中无在途 utterance 时被打断，仍发
         PLAYBACK_STOPPED 把机器带回 LISTENING（不停留在 INTERRUPTED）。"""

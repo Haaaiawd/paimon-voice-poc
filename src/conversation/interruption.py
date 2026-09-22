@@ -132,13 +132,30 @@ class InterruptionManager:
         ):
             self.skipped.append(event)
             return
-        if self._utterance_open() or self._machine.state == ConversationState.INTERRUPTED:
+        if self._utterance_open():
             # 强弱判定：只有"派蒙真的在出声"（TTS 已产出音频）才算打断——
-            # 记 heard-history、通知前端。生成中被掐/纯状态清理 = 弱打断，
-            # 静默收拾（停播/取消照做），不进历史、不发 AGENT_INTERRUPTED。
+            # 记 heard-history、通知前端。生成中被掐 = 弱打断，静默收拾
+            # （停播/取消照做），不进历史、不发 AGENT_INTERRUPTED。
             utterance = self._ctx.current_utterance
             audible = utterance is not None and utterance.audio_s > 0
             self._execute(trigger=str(event.type), audible=audible)
+        elif self._machine.state == ConversationState.INTERRUPTED:
+            # 修复路径：utterance 已结清时的重复触发——停播兜底 +
+            # PLAYBACK_STOPPED 收回状态机即可。不记账、不发
+            # AGENT_INTERRUPTED：一次打断只出现一次，不许连发。
+            if self._playback is not None:
+                try:
+                    self._playback.stop()
+                except Exception:
+                    pass
+            self._bus.publish(
+                EventType.PLAYBACK_STOPPED,
+                {
+                    "played_s": 0.0,
+                    "reason": "interrupted",
+                    "trigger": str(event.type),
+                },
+            )
 
     # ---- 六步 ----
 

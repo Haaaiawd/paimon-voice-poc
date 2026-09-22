@@ -38,14 +38,15 @@ def build_system_prompt(persona: Persona, constraints: BehaviorConstraints) -> s
         # speech 会被 TTS 逐字念出，排版/符号类输出是真实失败模式
         "语音：speech 会被 TTS 直接念出来——口语短句，"
         "不要列表、markdown、emoji、括号注释；"
-        "除非对方明确要求，否则不复读对方原话，没听清就吐槽没听清。",
+        "不复读对方原话，也不重复自己刚说过的话；没听清就吐槽没听清。",
         (
             f"长度：用户在要求解释，可以答完整，但仍控制在 "
             f"{constraints.max_sentences} 句以内。"
             if constraints.long_answer
             else (
                 f"长度：{constraints.max_sentences} 句以内，"
-                "直接回应对方最后一句，不长篇解释。"
+                "直接回应对方最后一句；对方只是嗯啊之类的碎话，"
+                "随口接一句或不说，别重讲前面的话题。"
             )
         ),
         # ── capability module：输出契约与闭嘴能力（doc 03 §6 schema；

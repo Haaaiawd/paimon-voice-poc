@@ -516,3 +516,72 @@ def test_clause_chunker_boundaries():
     ch2 = ClauseChunker()
     assert ch2.feed("没有标点的一整句") == []
     assert ch2.flush() == ["没有标点的一整句"]
+
+
+async def test_verbatim_repeat_of_last_reply_is_muted(tmp_path):
+    """复读硬闸：新回复与上一条 assistant 逐字重合的分句不送 TTS——
+    模型在碎片输入下复读是实测失败模式，宁可沉默也不原样再念一遍。"""
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, metrics, player, tts, _ = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="嗯。",
+        reply=REPLY,  # 回复与历史里的上一条完全相同
+        tmp_path=tmp_path,
+    )
+    # 种一条内容相同的上轮回复进历史
+    pipeline.core.context.logical_history.append(
+        {
+            "role": "assistant",
+            "text": REPLY["speech"],
+            "heard_text": REPLY["speech"],
+            "interrupted": False,
+            "utterance_id": 0,
+        }
+    )
+    await run_pipeline(pipeline)
+
+    assert not pipeline.errors
+    # 逐字复读的长分句被闸掉：交付 TTS 的 spoken_text 不含复述的句子；
+    # 短语气词（"哈？"<4 字）放行是刻意的——真人也会先"哈？"一下
+    utterance = pipeline.core.context.utterances[-1]
+    assert "你现在才发现" not in utterance.spoken_text
+    assert "派蒙早知道了" not in utterance.spoken_text
+    heard = [
+        e
+        for e in pipeline.core.context.heard_history
+        if e.get("role") == "assistant"
+    ]
+    assert not heard or "你现在才发现" not in heard[-1].get("text", "")
+
+
+async def test_fresh_reply_not_muted_by_history(tmp_path):
+    """对照组：不复读的正常回复照常出声。"""
+    frames = (
+        [silence_frame() for _ in range(2)]
+        + [tone_frame() for _ in range(26)]
+        + [silence_frame() for _ in range(20)]
+    )
+    pipeline, _, player, _, _ = make_pipeline(
+        frames=frames,
+        vad_segments=[(2, 28)],
+        transcripts="你说什么",
+        reply=REPLY,
+        tmp_path=tmp_path,
+    )
+    pipeline.core.context.logical_history.append(
+        {
+            "role": "assistant",
+            "text": "完全不同的上一句",
+            "heard_text": "完全不同的上一句",
+            "interrupted": False,
+            "utterance_id": 0,
+        }
+    )
+    await run_pipeline(pipeline)
+
+    assert player.written_seconds > 0

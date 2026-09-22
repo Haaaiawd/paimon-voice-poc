@@ -86,6 +86,59 @@ async def _texts(*parts: str) -> AsyncIterator[str]:
         yield p
 
 
+class _CloseOnFirstFinish(FakeBailian):
+    """第一条连接在 finish-task 时干净关闭（不回 task-finished）；
+    后续连接正常——模拟服务端在出声前回收空闲连接。"""
+
+    async def handler(self, ws) -> None:
+        conn_no = self.connections = self.connections + 1
+        self.auth = ws.request.headers.get("authorization")
+        async for raw in ws:
+            if isinstance(raw, bytes):
+                continue
+            msg = json.loads(raw)
+            action = msg["header"].get("action")
+            task_id = msg["header"].get("task_id", "")
+            if action == "run-task":
+                self.run_tasks.append(msg)
+                await ws.send(_event("task-started", task_id))
+            elif action == "continue-task":
+                self.continue_texts.append(msg["payload"]["input"]["text"])
+                if conn_no > 1:
+                    for frame in [b"PCM-RETRY"]:
+                        await ws.send(frame)
+            elif action == "finish-task":
+                self.finishes.append(msg["payload"].get("input", {}))
+                if conn_no == 1:
+                    await ws.close(1000)  # 出声前干净关闭
+                    return
+                await ws.send(_event("task-finished", task_id))
+
+
+class _CloseAfterAudio(FakeBailian):
+    """回过音频后干净关闭：半路截断，模拟播放中途掉线。"""
+
+    async def handler(self, ws) -> None:
+        self.connections += 1
+        self.auth = ws.request.headers.get("authorization")
+        async for raw in ws:
+            if isinstance(raw, bytes):
+                continue
+            msg = json.loads(raw)
+            action = msg["header"].get("action")
+            task_id = msg["header"].get("task_id", "")
+            if action == "run-task":
+                self.run_tasks.append(msg)
+                await ws.send(_event("task-started", task_id))
+            elif action == "continue-task":
+                self.continue_texts.append(msg["payload"]["input"]["text"])
+                await ws.send(b"PCM-1")
+                await ws.close(1000)  # 出了声才断
+                return
+            elif action == "finish-task":
+                await ws.send(_event("task-finished", task_id))
+
+
 async def _slow_texts(*parts: str, delay: float = 0.05) -> AsyncIterator[str]:
     """带间隔的文本流：模拟 LLM token 流，让 cancel 落在 pump 未发完时。"""
     for p in parts:
@@ -275,7 +328,8 @@ async def test_abnormal_close_raises_tts_error():
                     _event("task-started", msg["header"]["task_id"])
                 )
             elif action == "finish-task":
-                return  # 直接关，不发 task-finished
+                await ws.close(1011)  # 非正常关闭（1000 属干净关闭，走重试/截断）
+                return
 
     async with serve(rude, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
@@ -336,3 +390,29 @@ def test_parameters_and_instruction():
     assert params["rate"] == 1.2
     assert params["instruction"] == "你说话的情感是happy。"
     assert run["header"]["task_id"] == "t1"
+
+
+async def test_clean_close_before_audio_retries_on_new_connection():
+    """服务端 1000 干净关闭且未出声：换新连接把整段文本重放一次，
+    调用方无感拿到音频。"""
+    async with _CloseOnFirstFinish() as fake:
+        tts = _tts(fake.url)
+        chunks = [c async for c in tts.stream_audio(_texts("你好。", "旅行者！"))]
+        await tts.close()
+
+    assert chunks == [b"PCM-RETRY", b"PCM-RETRY"]
+    assert fake.connections == 2
+    # 文本在两条连接上各发了一次（重放证据）
+    assert fake.continue_texts == ["你好。", "旅行者！", "你好。", "旅行者！"]
+    assert len(fake.run_tasks) == 2
+
+
+async def test_clean_close_after_audio_truncates_gracefully():
+    """已出过声的干净关闭：按截断收尾——拿到已收音频，不抛异常。"""
+    async with _CloseAfterAudio() as fake:
+        tts = _tts(fake.url)
+        chunks = [c async for c in tts.stream_audio(_texts("你好。", "旅行者！"))]
+        await tts.close()
+
+    assert chunks == [b"PCM-1"]
+    assert fake.connections == 1  # 不重试：重放会让她把开头再念一遍

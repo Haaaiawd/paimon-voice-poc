@@ -589,6 +589,25 @@ class VoicePipeline:
         """共用响应体：LLM 流 → speech 抽取 → chunker → TTS → 播放 → 封账。"""
         ctx = self.core.context
         utterance = ctx.begin_utterance()
+        # 复读硬闸：归一化后与上一条 assistant 回复逐字重合的分句不送 TTS——
+        # 模型在碎片输入下收敛回同一句话是实测失败模式（"鸡鸣寺"×3）。
+        _prev_text = next(
+            (
+                str(e.get("text", ""))
+                for e in reversed(ctx.logical_history)
+                if e.get("role") == "assistant"
+            ),
+            "",
+        )
+        prev_norm = _norm_speech(_prev_text)
+
+        def _is_repeat(clause: str) -> bool:
+            norm = _norm_speech(clause)
+            return (
+                bool(prev_norm)
+                and len(norm) >= _ECHO_MIN_CHARS
+                and norm in prev_norm
+            )
         self.bus.publish(EventType.LLM_STARTED, llm_payload)
         task = asyncio.current_task()
         if task is not None:
@@ -640,13 +659,17 @@ class VoicePipeline:
                 )
 
                 async def chunks() -> AsyncIterator[str]:
-                    # 文本发出去的时刻即"已交付 TTS"——同步记 segment
-                    utterance.add_segment(first, 0.0)
-                    yield first
+                    # 文本发出去的时刻即"已交付 TTS"——同步记 segment；
+                    # 逐字复读上一句的分句跳过（不交付、不记 segment）。
+                    if not _is_repeat(first):
+                        utterance.add_segment(first, 0.0)
+                        yield first
                     while True:
                         item = await chunk_q.get()
                         if item is None:
                             return
+                        if _is_repeat(item):
+                            continue
                         utterance.add_segment(item, 0.0)
                         yield item
 
