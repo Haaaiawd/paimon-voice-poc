@@ -1,0 +1,190 @@
+/*
+ * Blackchalk theme overrides + Chinese handwriting fallback stack
+ * (FRONTEND_DEMO_DESIGN.md §1.2 note: monochrome strokes are an English
+ * wireframe idiom; Chinese hand-drawn feel comes from the Kai/手写 font chain).
+ */
+
+:root {
+  --sketch-font:
+    'Caveat', 'Kaiti SC', 'KaiTi', 'STKaiti', '楷体', 'Comic Sans MS', cursive;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--sketch-font);
+  background: var(--sketch-bg, #faf8f5);
+  color: var(--sketch-fg, #2b2b2b);
+}
+
+.page {
+  max-width: 680px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* ---- state bar ---- */
+
+.state-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.state-bar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.state-bar-spacer {
+  flex: 1;
+}
+
+.state-backend {
+  opacity: 0.55;
+  font-size: 12px;
+}
+
+/* ---- chat list ---- */
+
+.chat-paper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 2px solid var(--sketch-fg, #2b2b2b);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* rough edge */
+  padding: 16px;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.bubble-row-user {
+  justify-content: flex-end;
+}
+
+.bubble-row-paimon {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 78%;
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* User bubble renders inverted: the card carries data-theme="dark", so
+ * --sketch-fg resolves to the light value inside its own scope. */
+.bubble-user {
+  color: var(--sketch-fg);
+}
+
+.bubble-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 78%;
+}
+
+.paimon-avatar {
+  flex: none;
+  border-radius: 50%;
+}
+
+.emotion-badge-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.streaming-caret {
+  opacity: 0.6;
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chat-notice {
+  align-self: center;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+/* ---- typing indicator ---- */
+
+.typing-bubble {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--sketch-fg, #2b2b2b);
+  border-radius: 50% 45% 55% 50%; /* slightly wobbly, hand-drawn feel */
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* ---- composer ---- */
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-input {
+  flex: 1;
+}

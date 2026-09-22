@@ -134,7 +134,11 @@
       "title": "Web demo UI：Blackchalk 手绘气泡界面 + MockBackend/WsBackend（前端子目录 frontend/）",
       "kind": "interface",
       "notes": "",
-      "covered_by": [],
+      "covered_by": [
+        "TASK-016",
+        "TASK-017",
+        "TASK-018"
+      ],
       "created_at": "2026-09-22T03:06:55.232Z"
     }
   ]

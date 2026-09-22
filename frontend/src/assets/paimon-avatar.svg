@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Hand-drawn placeholder avatar for Paimon (demo stage 1). -->
+  <g fill="none" stroke="#2b2b2b" stroke-width="2" stroke-linecap="round">
+    <path d="M33 6 C15 8 7 22 8 36 C9 51 21 58 33 58 C47 58 57 49 57 34 C57 19 47 7 33 6 Z"/>
+    <path d="M20 30 q3 -4 7 0" />
+    <path d="M38 30 q3 -4 7 0" />
+    <path d="M26 42 q6 5 13 0" />
+    <path d="M33 6 q2 -4 6 -4" />
+    <circle cx="44" cy="4" r="2.5" />
+  </g>
+</svg>

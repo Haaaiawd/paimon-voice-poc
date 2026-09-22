@@ -948,32 +948,32 @@
         {
           "criterion": "frontend/ 目录存在且 `npm run dev` 可启动 Vite dev server",
           "verify_by": "cd frontend && npm run dev 看到 localhost:5173",
-          "evidence": ""
+          "evidence": "cd frontend && npm install（34 pkgs, 0 vulns）&& npm run dev → Vite ready, http://localhost:5173 curl 200；tsc --noEmit 与 vite build 均通过"
         },
         {
           "criterion": "Blackchalk 手绘气泡界面：用户右对齐、派蒙左对齐、带头像占位、情绪徽标槽位",
           "verify_by": "浏览器打开 localhost:5173 人工验证",
-          "evidence": ""
+          "evidence": "agent-browser 截图验证：用户气泡右对齐反色手绘框『你在吗』；派蒙气泡左对齐 + paimon-avatar.svg 占位头像 + EmotionBadge（图标+文字标签，单色不用颜色）"
         },
         {
           "criterion": "输入框 + 发送按钮 + Enter 发送，发出去立即上屏",
           "verify_by": "人工输入并发送，确认气泡出现",
-          "evidence": ""
+          "evidence": "fill @e5 + press Enter 两轮实测，用户气泡即时出现；Composer 用 SketchInput+SketchButton，Enter 发送（含 IME isComposing 守卫）"
         },
         {
           "criterion": "MockBackend 剧本回复：4–6 轮预设对话，回复数据结构为真 AgentReply 形状",
           "verify_by": "逐轮发送预设触发词，确认回复内容与情绪标签正确",
-          "evidence": ""
+          "evidence": "mocks/script.ts 6 条触发剧本 + 3 条 fallback，全部 AgentReply{speech,emotion,energy}，emotion ∈ §8 八标签集；实测 excited/teasing 两轮回复正确命中"
         },
         {
           "criterion": "打字中动画：派蒙回复前 0.8–1.5s 随机延迟 + 手绘风三点动画",
           "verify_by": "人工观察动画触发时机与样式",
-          "evidence": ""
+          "evidence": "MockBackend rand(800,1500) 延迟 + TypingIndicator 三点 wobble 动画；实测 SEFA 1384/1453ms 与延迟区间吻合"
         },
         {
           "criterion": "语音输入按钮（视觉存在，mock 行为）+ 管线状态条（IDLE/THINKING/SPEAKING）",
           "verify_by": "人工点击麦克风按钮确认 mock 提示；确认状态条随剧本切换",
-          "evidence": ""
+          "evidence": "点击 mic 按钮 → StateBar LISTENING 2s → IDLE + 未接通提示；StateBar 随剧本 IDLE→THINKING→SPEAKING→IDLE 切换并显示 SEFA ms"
         }
       ],
       "done_when": [],
@@ -1000,15 +1000,53 @@
       "covers": [
         "DLV-012"
       ],
-      "status": "open",
+      "status": "done",
       "progress": {
         "completed": [],
-        "current": "",
+        "current": "complete",
         "next": ""
       },
-      "evidence": [],
+      "evidence": [
+        "frontend/ 脚手架完成：Vite 8.3.0 + React 19.3.0 + TS 5.9.3 + blackchalk@0.3.0（MIT，2026-07-01 发布，刻意不用发布仅 14h 的 0.4.0）。npm install 34 packages 0 vulnerabilities；npx tsc --noEmit exit 0；npm run build 490ms 成功；npm run dev → localhost:5173 curl 200。",
+        "契约纪律：src/types.ts 逐字复用 AgentReply{speech,emotion,energy}、05 §8 八情绪标签、02 §3 七态状态机、§4 全部 ClientFrame/ServerFrame 事件名；isServerFrame 未知 type 过滤落实现 §4.3 向前兼容纪律。",
+        "MockBackend 发出真实 §4.3 帧序列：state THINKING → 0.8–1.5s 随机打字延迟 → SPEAKING → reply.delta 分块 → reply.final → latency(SEFA) → IDLE；WsBackend 已按 §4 实现但默认 VITE_BACKEND=mock 未启用（阶段 2 零返工）。",
+        "agent-browser 实测 localhost:5173：输入『你在吗』Enter 发送立即上屏（右对齐反色气泡）→ 派蒙左对齐气泡带头像占位+⚡excited 徽标回复『在呢在呢！又有什么麻烦事要找派蒙？』，StateBar 显示 IDLE→SEFA 1384ms；第二轮『今天吃什么』→『当然是甜甜花酿鸡！……你不会又想让派蒙看着你吃吧？』+ teasing 徽标，SEFA 1453ms。",
+        "语音按钮 mock 验证：点击后 StateBar 进入 LISTENING 约 2s → 回 IDLE + 提示『( 语音输入 demo 阶段还没接通——先打字聊吧 )』，不假装能用。",
+        "截图证据 /tmp/paimon-demo3.png；目录结构对齐设计 §1.3（components/backend/mocks/styles/assets + .env.example + TODO.md + vite.config.ts /ws proxy）；根 .gitignore 已补 node_modules/。未触碰 00–07 文档与后端代码。",
+        {
+          "type": "acceptance_results",
+          "results": [
+            {
+              "criterion": "frontend/ 目录存在且 `npm run dev` 可启动 Vite dev server",
+              "evidence": "cd frontend && npm install（34 pkgs, 0 vulns）&& npm run dev → Vite ready, http://localhost:5173 curl 200；tsc --noEmit 与 vite build 均通过"
+            },
+            {
+              "criterion": "Blackchalk 手绘气泡界面：用户右对齐、派蒙左对齐、带头像占位、情绪徽标槽位",
+              "evidence": "agent-browser 截图验证：用户气泡右对齐反色手绘框『你在吗』；派蒙气泡左对齐 + paimon-avatar.svg 占位头像 + EmotionBadge（图标+文字标签，单色不用颜色）"
+            },
+            {
+              "criterion": "输入框 + 发送按钮 + Enter 发送，发出去立即上屏",
+              "evidence": "fill @e5 + press Enter 两轮实测，用户气泡即时出现；Composer 用 SketchInput+SketchButton，Enter 发送（含 IME isComposing 守卫）"
+            },
+            {
+              "criterion": "MockBackend 剧本回复：4–6 轮预设对话，回复数据结构为真 AgentReply 形状",
+              "evidence": "mocks/script.ts 6 条触发剧本 + 3 条 fallback，全部 AgentReply{speech,emotion,energy}，emotion ∈ §8 八标签集；实测 excited/teasing 两轮回复正确命中"
+            },
+            {
+              "criterion": "打字中动画：派蒙回复前 0.8–1.5s 随机延迟 + 手绘风三点动画",
+              "evidence": "MockBackend rand(800,1500) 延迟 + TypingIndicator 三点 wobble 动画；实测 SEFA 1384/1453ms 与延迟区间吻合"
+            },
+            {
+              "criterion": "语音输入按钮（视觉存在，mock 行为）+ 管线状态条（IDLE/THINKING/SPEAKING）",
+              "evidence": "点击 mic 按钮 → StateBar LISTENING 2s → IDLE + 未接通提示；StateBar 随剧本 IDLE→THINKING→SPEAKING→IDLE 切换并显示 SEFA ms"
+            }
+          ],
+          "at": "2026-09-22T03:07:37.067Z"
+        }
+      ],
       "created_at": "2026-09-22T04:00:00.000Z",
-      "updated_at": "2026-09-22T04:00:00.000Z"
+      "updated_at": "2026-09-22T03:07:37.067Z",
+      "completed_at": "2026-09-22T03:07:37.067Z"
     },
     {
       "id": "TASK-017",
