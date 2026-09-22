@@ -443,7 +443,7 @@ def _build_providers(args, env):
         "OPENAI_COMPATIBLE_URL",
         "https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
-    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen-turbo")
+    llm_model = args.llm_model or env.get("QWEN_MODEL", "qwen3.7-flash")
     ws_url = env.get("DASHSCOPE_WS_URL")
     vad = SileroVADAdapter()
     turn = SmartTurnAdapter(wait_for_transcript=True)
